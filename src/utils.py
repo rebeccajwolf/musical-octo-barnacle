@@ -200,7 +200,8 @@ class Utils:
                     by=byValue[0], value=byValue[1]
                 )
             for dismissButton in dismissButtons:
-                dismissButton.click()
+                if dismissButton.is_displayed():
+                    dismissButton.click()
         with contextlib.suppress(NoSuchElementException):
             self.webdriver.find_element(By.ID, "cookie-banner").find_element(
                 By.TAG_NAME, "button"

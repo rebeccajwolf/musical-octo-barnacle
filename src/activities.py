@@ -172,7 +172,7 @@ class Activities:
         try:
             activityTitle = cleanupActivityTitle(activity["title"])
             logging.debug(f"activityTitle={activityTitle}")
-            if activity["complete"] is True or activity["pointProgressMax"] == 0:
+            if activity["complete"] is True or activity["pointProgressMax"] == 0 or activity["exclusiveLockedFeatureStatus"] == "locked":
                 logging.debug("Already done, returning")
                 return
             if activityTitle in CONFIG.get("apprise").get("notify").get(
