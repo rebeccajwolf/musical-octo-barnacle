@@ -34,13 +34,13 @@ import zipfile
 
 def downloadWebDriver():
     # get the latest chrome driver version number
-    url = 'https://chromedriver.storage.googleapis.com/LATEST_RELEASE'
-    response = requests.get(url)
-    version_number = response.text
+    # url = 'https://chromedriver.storage.googleapis.com/LATEST_RELEASE'
+    # response = requests.get(url)
+    # version_number = response.text
 
     # build the donwload url
-    download_url = "https://chromedriver.storage.googleapis.com/" + version_number +"/chromedriver_linux64.zip"
-
+    # download_url = "https://chromedriver.storage.googleapis.com/" + version_number +"/chromedriver_linux64.zip"
+    download_url = "https://storage.googleapis.com/chrome-for-testing-public/128.0.6613.119/linux64/chromedriver-linux64.zip"
     # download the zip file using the url built above
     latest_driver_zip = wget.download(download_url,'chromedriver.zip')
 
@@ -385,7 +385,7 @@ def job():
         )
 
 if __name__ == "__main__":
-    # downloadWebDriver()
+    downloadWebDriver()
     job()
     schedule.every().day.at("05:00", "America/New_York").do(job)
     schedule.every().day.at("11:00", "America/New_York").do(job)
