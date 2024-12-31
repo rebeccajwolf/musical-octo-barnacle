@@ -132,7 +132,7 @@ class Browser:
                 options=options,
                 seleniumwire_options=seleniumwireOptions,
                 user_data_dir=self.userDataDir.as_posix(),
-                driver_executable_path="chromedriver",
+                driver_executable_path="/usr/bin/chromedriver",
             )
 
         seleniumLogger = logging.getLogger("seleniumwire")
@@ -269,7 +269,7 @@ class Browser:
         chrome_options = ChromeOptions()
         chrome_options.add_argument("--headless=new")
         chrome_options.add_argument("--no-sandbox")
-        driver = WebDriver(service=ChromeService(executable_path="chromedriver"), options=chrome_options)
+        driver = WebDriver(service=ChromeService(executable_path="/usr/bin/chromedriver"), options=chrome_options)
         version = driver.capabilities["browserVersion"]
 
         driver.close()
