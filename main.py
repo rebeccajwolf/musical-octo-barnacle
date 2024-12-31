@@ -387,7 +387,7 @@ def job():
 if __name__ == "__main__":
     downloadWebDriver()
     job()
-    schedule.every().day.at("05:00", "America/New_York").do(job)
-    schedule.every().day.at("11:00", "America/New_York").do(job)
+    schedule.every().days.at(time_str = "05:00", tz = "America/New_York").do(job)
+    schedule.every().days.at(time_str = "11:00", tz = "America/New_York").do(job)
     while True:
         schedule.run_pending()
