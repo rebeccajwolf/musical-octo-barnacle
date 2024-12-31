@@ -374,7 +374,7 @@ def time_left(sleep_time, step=60):
     print("\rStarting...")
 
 def job():
-    subprocess.Popen(['sh', './clean_mem.sh'])
+    subprocess.call(['sh', './clean_mem.sh'])
     time_left(random.randint(1, 4)*60)
     try:
         main()
