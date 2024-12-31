@@ -26,7 +26,29 @@ from src.activities import Activities
 from src.browser import RemainingSearches
 from src.loggingColoredFormatter import ColoredFormatter
 from src.utils import Utils, CONFIG, sendNotification, getProjectRoot, formatNumber
-from keep_alive_v2 import keep_alive
+
+import requests
+import os
+import wget
+import zipfile
+
+def downloadWebDriver():
+    # get the latest chrome driver version number
+    url = 'https://chromedriver.storage.googleapis.com/LATEST_RELEASE'
+    response = requests.get(url)
+    version_number = response.text
+
+    # build the donwload url
+    download_url = "https://chromedriver.storage.googleapis.com/" + version_number +"/chromedriver_linux64.zip"
+
+    # download the zip file using the url built above
+    latest_driver_zip = wget.download(download_url,'chromedriver.zip')
+
+    # extract the zip file
+    with zipfile.ZipFile(latest_driver_zip, 'r') as zip_ref:
+        zip_ref.extractall() # you can specify the destination folder path here
+    # delete the zip file downloaded above
+    os.remove(latest_driver_zip)
 
 
 def main():
@@ -363,7 +385,7 @@ def job():
         )
 
 if __name__ == "__main__":
-    keep_alive()
+    # downloadWebDriver()
     job()
     schedule.every().day.at("05:00", "America/New_York").do(job)
     schedule.every().day.at("11:00", "America/New_York").do(job)
