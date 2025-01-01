@@ -13,6 +13,7 @@ import subprocess
 import time
 from datetime import datetime
 from enum import Enum, auto
+from pyvirtualdisplay import Display
 
 from src import (
     Browser,
@@ -372,6 +373,14 @@ def time_left(sleep_time, step=60):
         print(f'\r{_//60} minutes left...')
         time.sleep(step)
     print("\rStarting...")
+    
+def createDisplay():
+    """Create Display"""
+    try:
+        display = Display(visible=False, size=(1920, 1080))
+        display.start()
+    except Exception as exc:  # skipcq
+        logging.error(exc, exc_info=True)
 
 def job():
     # subprocess.call(['sh', './clean_mem.sh'])
@@ -386,6 +395,7 @@ def job():
 
 if __name__ == "__main__":
     # downloadWebDriver()
+    createDisplay()
     job()
     schedule.every().days.at(time_str = "05:00", tz = "America/New_York").do(job)
     schedule.every().days.at(time_str = "11:00", tz = "America/New_York").do(job)
