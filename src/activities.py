@@ -84,13 +84,13 @@ class Activities:
             except:
                 if tries < 10:
                     tries += 1
-                    time.sleep(0.5)
+                    sleep(0.5)
                 else:
                     if refreshCount < 5:
                         self.webdriver.refresh()
                         refreshCount += 1
                         tries = 0
-                        time.sleep(5)
+                        sleep(5)
                     else:
                         return False
 
@@ -99,6 +99,7 @@ class Activities:
         # with contextlib.suppress(TimeoutException):
             # startQuiz = self.browser.utils.waitUntilQuizLoads()
             # self.browser.utils.click(startQuiz)
+        sleep(12)
         if not self.waitUntilQuizLoads():
             self.browser.utils.resetTabs()
             return
@@ -166,6 +167,7 @@ class Activities:
         # Simulate completing a This or That activity
         # startQuiz = self.browser.utils.waitUntilQuizLoads()
         # self.browser.utils.click(startQuiz)
+        sleep(12)
         if not self.waitUntilQuizLoads():
             self.browser.utils.resetTabs()
             return
