@@ -103,6 +103,9 @@ class Activities:
         if not self.waitUntilQuizLoads():
             self.browser.utils.resetTabs()
             return
+        with contextlib.suppress(TimeoutException):
+            startQuiz = self.browser.utils.waitUntilQuizLoads()
+            self.browser.utils.click(startQuiz)
         self.browser.utils.waitUntilVisible(
             By.XPATH, '//*[@id="currentQuestionContainer"]/div/div[1]', 180
         )
@@ -171,6 +174,9 @@ class Activities:
         if not self.waitUntilQuizLoads():
             self.browser.utils.resetTabs()
             return
+        with contextlib.suppress(TimeoutException):
+            startQuiz = self.browser.utils.waitUntilQuizLoads()
+            self.browser.utils.click(startQuiz)
         self.browser.utils.waitUntilVisible(
             By.XPATH, '//*[@id="currentQuestionContainer"]/div/div[1]', 180
         )
