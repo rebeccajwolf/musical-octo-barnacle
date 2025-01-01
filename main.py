@@ -413,7 +413,7 @@ def job():
 
 if __name__ == "__main__":
     # downloadWebDriver()
-    downloadWebDriverv2()
+    # downloadWebDriverv2()
     createDisplay()
     job()
     schedule.every().days.at(time_str = "05:00", tz = "America/New_York").do(job)
