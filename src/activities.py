@@ -71,13 +71,40 @@ class Activities:
         # Simulate completing a survey activity
         # noinspection SpellCheckingInspection
         self.webdriver.find_element(By.ID, f"btoption{randint(0, 1)}").click()
+        
+    def waitUntilQuizLoads(self):
+        """Wait until quiz loads"""
+        tries = 0
+        refreshCount = 0
+        while True:
+            try:
+                self.webdriver.find_element(
+                    By.XPATH, '//*[@id="currentQuestionContainer"]')
+                return True
+            except:
+                if tries < 10:
+                    tries += 1
+                    time.sleep(0.5)
+                else:
+                    if refreshCount < 5:
+                        self.webdriver.refresh()
+                        refreshCount += 1
+                        tries = 0
+                        time.sleep(5)
+                    else:
+                        return False
 
     def completeQuiz(self):
         # Simulate completing a quiz activity
-        with contextlib.suppress(TimeoutException):
-            startQuiz = self.browser.utils.waitUntilQuizLoads()
-            self.browser.utils.click(startQuiz)
-        self.browser.utils.waitUntilVisible(By.ID, "overlayPanel", 180)
+        # with contextlib.suppress(TimeoutException):
+            # startQuiz = self.browser.utils.waitUntilQuizLoads()
+            # self.browser.utils.click(startQuiz)
+        if not self.waitUntilQuizLoads():
+            self.browser.utils.resetTabs()
+            return
+        self.browser.utils.waitUntilVisible(
+            By.XPATH, '//*[@id="currentQuestionContainer"]/div/div[1]', 180
+        )
         currentQuestionNumber: int = self.webdriver.execute_script(
             "return _w.rewardsQuizRenderInfo.currentQuestionNumber"
         )
@@ -137,8 +164,11 @@ class Activities:
 
     def completeThisOrThat(self):
         # Simulate completing a This or That activity
-        startQuiz = self.browser.utils.waitUntilQuizLoads()
-        self.browser.utils.click(startQuiz)
+        # startQuiz = self.browser.utils.waitUntilQuizLoads()
+        # self.browser.utils.click(startQuiz)
+        if not self.waitUntilQuizLoads():
+            self.browser.utils.resetTabs()
+            return
         self.browser.utils.waitUntilVisible(
             By.XPATH, '//*[@id="currentQuestionContainer"]/div/div[1]', 180
         )
