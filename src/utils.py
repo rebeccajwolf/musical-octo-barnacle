@@ -116,12 +116,12 @@ class Utils:
 
     def goToRewards(self) -> None:
         self.webdriver.get(REWARDS_URL)
-        maxTries = 5
-        for _ in range(maxTries):
+        while True:
             try:
                 assert (
                     self.webdriver.current_url == REWARDS_URL
                 ), f"{self.webdriver.current_url} {REWARDS_URL}"
+                return
             except:
                 self.webdriver.refresh()
                 time.sleep(10)
@@ -135,14 +135,20 @@ class Utils:
     # Prefer getBingInfo if possible
     def getDashboardData(self) -> dict:
         urlBefore = self.webdriver.current_url
-        try:
-            self.goToRewards()
-            return self.webdriver.execute_script("return dashboard")
-        finally:
+        maxTries = 5
+        for _ in range(maxTries):
             try:
-                self.webdriver.get(urlBefore)
-            except TimeoutException:
                 self.goToRewards()
+                return self.webdriver.execute_script("return dashboard")
+            except:
+                self.webdriver.refresh()
+                time.sleep(10)
+                self.waitUntilVisible(By.ID, 'app-host', 30)
+            finally:
+                try:
+                    self.webdriver.get(urlBefore)
+                except TimeoutException:
+                    self.goToRewards()
 
     def getDailySetPromotions(self) -> list[dict]:
         return self.getDashboardData()["dailySetPromotions"][

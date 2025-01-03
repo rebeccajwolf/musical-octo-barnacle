@@ -18,8 +18,10 @@ class PunchCards:
         # Function to complete a specific punch card
         self.webdriver.get(url)
         for child in childPromotions:
-            if child["complete"] is False:
+            if not child["complete"]:
+                logging.info(f"Punch Card Name: {child['name']}")
                 if child["promotionType"] == "urlreward":
+                    logging.info(f"Offer Title: {child['attributes']['title']}")
                     self.webdriver.find_element(
                         By.XPATH, "//a[@class='offer-cta']/div"
                     ).click()
@@ -72,7 +74,6 @@ class PunchCards:
                     )
             except Exception:  # pylint: disable=broad-except
                 logging.error("[PUNCH CARDS] Error Punch Cards", exc_info=True)
-                logging.info(punchCards)
                 self.browser.utils.resetTabs()
                 continue
         logging.info("[PUNCH CARDS] Exiting")

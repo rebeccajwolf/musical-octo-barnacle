@@ -6,6 +6,8 @@ apprise:
       ignore:
         - Get 50 entries plus 1000 points!
         - Safeguard your family's info
+        - Get Spotify Premium for free
+        - A new web hero
     uncaught-exception:
       enabled: True # True or False
     login-code:
