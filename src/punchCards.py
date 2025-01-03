@@ -72,6 +72,7 @@ class PunchCards:
                     )
             except Exception:  # pylint: disable=broad-except
                 logging.error("[PUNCH CARDS] Error Punch Cards", exc_info=True)
+                logging.info(punchCards)
                 self.browser.utils.resetTabs()
                 continue
         logging.info("[PUNCH CARDS] Exiting")

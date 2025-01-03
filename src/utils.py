@@ -116,9 +116,15 @@ class Utils:
 
     def goToRewards(self) -> None:
         self.webdriver.get(REWARDS_URL)
-        assert (
-            self.webdriver.current_url == REWARDS_URL
-        ), f"{self.webdriver.current_url} {REWARDS_URL}"
+        maxTries = 5
+        for _ in range(maxTries):
+            try:
+                assert (
+                    self.webdriver.current_url == REWARDS_URL
+                ), f"{self.webdriver.current_url} {REWARDS_URL}"
+            except:
+                self.webdriver.refresh()
+                time.sleep(10)
 
     def goToSearch(self) -> None:
         self.webdriver.get(SEARCH_URL)

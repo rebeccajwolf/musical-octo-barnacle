@@ -61,7 +61,7 @@ class Activities:
             f"#more-activities > .m-card-group > .ng-scope:nth-child({cardId}) .ds-card-sec",
         )
         self.browser.utils.click(element)
-        self.browser.utils.switchToNewTab()
+        # self.browser.utils.switchToNewTab()
 
     def completeSearch(self):
         # Simulate completing a search activity
@@ -233,6 +233,8 @@ class Activities:
                 if self.webdriver.find_element(By.XPATH, '//*[@id="modal-host"]/div[2]/button').is_displayed():
                     self.webdriver.find_element(By.XPATH, '//*[@id="modal-host"]/div[2]/button').click()
                     return
+                else:
+                    self.browser.utils.switchToNewTab()
             except:
                 pass
             sleep(7)
