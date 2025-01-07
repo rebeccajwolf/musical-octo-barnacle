@@ -143,12 +143,12 @@ def setupLogging():
     logs_directory.mkdir(parents=True, exist_ok=True)
 
     # so only our code is logged if level=logging.DEBUG or finer
-    logging.config.dictConfig(
-        {
-            "version": 1,
-            "disable_existing_loggers": True,
-        }
-    )
+    # logging.config.dictConfig(
+        # {
+            # "version": 1,
+            # "disable_existing_loggers": True,
+        # }
+    # )
     logging.basicConfig(
         level=logging.getLevelName(CONFIG.get("logging").get("level").upper()),
         format=_format,
