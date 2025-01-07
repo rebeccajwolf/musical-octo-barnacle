@@ -412,7 +412,7 @@ def job():
         )
 
 if __name__ == "__main__":
-    downloadWebDriver()
+    # downloadWebDriver()
     # downloadWebDriverv2()
     createDisplay()
     job()
