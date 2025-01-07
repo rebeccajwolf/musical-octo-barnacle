@@ -65,7 +65,23 @@ class Activities:
 
     def completeSearch(self):
         # Simulate completing a search activity
-        pass
+        for _ in range(1):
+            html = self.webdriver.find_element(By.TAG_NAME, 'html')
+            for _ in range(3):
+                html.send_keys(Keys.END)
+                html.send_keys(Keys.HOME)
+            try:
+                sleep(1.5)
+                searchbar = self.webdriver.find_element(By.XPATH, '//*[@id="sb_form_q"]')
+                searchbar.click()
+                sleep(1.5)
+                self.webdriver.find_element(By.ID, "b_header").click()
+                sleep(1.5)
+            except:
+                pass
+            self.webdriver.refresh()
+            sleep(3.5)
+        # pass
 
     def completeSurvey(self):
         # Simulate completing a survey activity
