@@ -132,8 +132,8 @@ class Browser:
                 options=options,
                 seleniumwire_options=seleniumwireOptions,
                 user_data_dir=self.userDataDir.as_posix(),
-                # driver_executable_path=getProjectRoot() / "chromedriver",
-                version_main=112,
+                driver_executable_path=getProjectRoot() / "chromedriver",
+                # version_main=112,
             )
 
         seleniumLogger = logging.getLogger("seleniumwire")
