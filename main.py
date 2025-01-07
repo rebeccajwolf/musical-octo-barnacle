@@ -41,7 +41,7 @@ def downloadWebDriver():
 
     # build the donwload url
     # download_url = "https://chromedriver.storage.googleapis.com/" + version_number +"/chromedriver_linux64.zip"
-    download_url = "https://chromedriver.storage.googleapis.com/112.0.5615.49/chromedriver_linux64.zip"
+    download_url = "https://storage.googleapis.com/chrome-for-testing-public/128.0.6613.119/linux64/chromedriver-linux64.zip"
     # download the zip file using the url built above
     latest_driver_zip = wget.download(download_url,'chromedriver.zip')
 
@@ -412,7 +412,7 @@ def job():
         )
 
 if __name__ == "__main__":
-    # downloadWebDriver()
+    downloadWebDriver()
     # downloadWebDriverv2()
     createDisplay()
     job()
