@@ -3,6 +3,6 @@ from fastapi import FastAPI
 app = FastAPI()
 
 
-@app.get("/")
+@app.api_route('/', methods=['GET', 'HEAD'])
 async def read_root():
     return {"message": "App is Running..."}
