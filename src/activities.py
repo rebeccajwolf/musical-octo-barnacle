@@ -241,6 +241,7 @@ class Activities:
             with contextlib.suppress(TimeoutException):
                 searchbar = self.browser.utils.waitUntilClickable(By.ID, "sb_form_q")
                 self.browser.utils.click(searchbar)
+            logging.info(activityTitle)
             if activityTitle in ACTIVITY_TITLE_TO_SEARCH:
                 searchbar.send_keys(ACTIVITY_TITLE_TO_SEARCH[activityTitle])
                 sleep(2)
