@@ -38,6 +38,35 @@ import zipfile
 # logging.basicConfig(level=logging.INFO)
 # logger = logging.getLogger(__name__)
 
+def create_accounts_json_from_env():
+    """Creates accounts.json file from ACCOUNTS environment variable.
+    Expected format of ACCOUNTS env var: 'email1:pass1,email2:pass2'
+    """
+    try:
+        accounts_str = os.getenv('ACCOUNTS', '')
+        if not accounts_str:
+            logging.warning("[ACCOUNT] No ACCOUNTS environment variable found")
+            return
+        
+        # Parse accounts string into list of dictionaries
+        accounts = []
+        for account_str in accounts_str.split(','):
+            if ':' in account_str:
+                username, password = account_str.split(':')
+                accounts.append({
+                    "username": username.strip(),
+                    "password": password.strip()
+                })
+        
+        # Write to accounts.json
+        account_path = getProjectRoot() / "accounts.json"
+        with open(account_path, 'w', encoding='utf-8') as f:
+            json.dump(accounts, f, indent=4)
+            
+        logging.info("[ACCOUNT] Successfully created accounts.json from environment variable")
+    except Exception as e:
+        logging.error("[ACCOUNT] Error creating accounts.json: %s", str(e))
+
 def downloadWebDriver():
     # get the latest chrome driver version number
     # url = 'https://chromedriver.storage.googleapis.com/LATEST_RELEASE'
@@ -425,6 +454,7 @@ def job():
         )
 
 if __name__ == "__main__":
+    create_accounts_json_from_env()
     setupLogging()
     # Start the keep-alive thread
     keep_alive_thread = Thread(target=keep_alive)
