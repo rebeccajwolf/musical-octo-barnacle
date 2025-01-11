@@ -11,9 +11,11 @@ import sys
 import traceback
 import subprocess
 import time
+import gradio as gr
 from datetime import datetime
 from enum import Enum, auto
 from pyvirtualdisplay import Display
+from threading import Thread
 
 from src import (
     Browser,
@@ -73,7 +75,6 @@ def downloadWebDriverv2():
 def main():
     args = argumentParser()
     Utils.args = args
-    setupLogging()
     loadedAccounts = setupAccounts()
 
     # Load previous day's points data
@@ -386,6 +387,28 @@ def save_previous_points_data(data):
     with open(logs_directory / "previous_points_data.json", "w") as file:
         json.dump(data, file, indent=4)
 
+def keep_alive():
+    """Keep-alive function that runs in a separate thread"""
+    while True:
+        logging.info("Space is active: " + time.strftime("%Y-%m-%d %H:%M:%S"))
+        time.sleep(300)  # Log every 5 minutes
+
+def gradio_template():
+    # Create a simple Gradio interface
+    def greet(name):
+        return "Hello " + name + "!"
+
+    iface = gr.Interface(
+        fn=greet,
+        inputs="text",
+        outputs="text",
+        title="App is Running...",
+        description="This space stays active while running"
+    )
+
+    # Launch the interface
+    iface.launch(server_name="0.0.0.0", server_port=7860)
+
 def time_left(sleep_time, step=60):
     for _ in range(sleep_time, 0, (-1)*step):
         print(f'\r{_//60} minutes left...')
@@ -412,6 +435,11 @@ def job():
         )
 
 if __name__ == "__main__":
+    setupLogging()
+    # Start the keep-alive thread
+    keep_alive_thread = Thread(target=keep_alive)
+    keep_alive_thread.daemon = True
+    keep_alive_thread.start()
     downloadWebDriver()
     # downloadWebDriverv2()
     createDisplay()
