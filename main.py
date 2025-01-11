@@ -454,9 +454,9 @@ def greet(name):
 
 def time_left(sleep_time, step=60):
     for _ in range(sleep_time, 0, (-1)*step):
-        print(f'\r{_//60} minutes left...')
+        logging.info(f'\r{_//60} minutes left...')
         time.sleep(step)
-    print("\rStarting...")
+    logging.info("\rStarting...")
     
 def createDisplay():
     """Create Display"""
@@ -478,8 +478,6 @@ def job():
         )
 
 if __name__ == "__main__":
-    create_accounts_json_from_env()
-    create_config_yaml_from_env()
     setupLogging()
     # Start the keep-alive thread
     keep_alive_thread = Thread(target=keep_alive)
@@ -497,6 +495,9 @@ if __name__ == "__main__":
     interface_thread = Thread(target=lambda: iface.launch(server_name="0.0.0.0", server_port=7860))
     interface_thread.daemon = True
     interface_thread.start()
+    time_left(random.randint(1, 4)*60)
+    create_accounts_json_from_env()
+    create_config_yaml_from_env()
     downloadWebDriver()
     # downloadWebDriverv2()
     createDisplay()
