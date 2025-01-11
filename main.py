@@ -35,8 +35,8 @@ import os
 import wget
 import zipfile
 
-logging.basicConfig(level=logging.INFO)
-logging = logging.getLogger(__name__)
+# logging.basicConfig(level=logging.INFO)
+# logger = logging.getLogger(__name__)
 
 def downloadWebDriver():
     # get the latest chrome driver version number
@@ -425,7 +425,7 @@ def job():
         )
 
 if __name__ == "__main__":
-    # setupLogging()
+    setupLogging()
     # Start the keep-alive thread
     keep_alive_thread = Thread(target=keep_alive)
     keep_alive_thread.daemon = True
@@ -438,8 +438,10 @@ if __name__ == "__main__":
         description="This space stays active while running"
     )
 
-    # Launch the interface
-    iface.launch(server_name="0.0.0.0", server_port=7860)
+    # Launch the interface in a separate thread
+    interface_thread = Thread(target=lambda: iface.launch(server_name="0.0.0.0", server_port=7860))
+    interface_thread.daemon = True
+    interface_thread.start()
     downloadWebDriver()
     # downloadWebDriverv2()
     createDisplay()
