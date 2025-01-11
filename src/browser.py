@@ -201,28 +201,28 @@ class Browser:
         options.add_argument("--disable-features=Translate")
         options.add_argument("--disable-features=PrivacySandboxSettings4")
         options.add_argument("--disable-http2")
-        options.add_argument("--disable-setuid-sandbox")
-        options.add_argument("--window-size=800,600")
-        options.add_argument("--single-process")  # Reduces memory footprint
-        options.add_argument("--disable-software-rasterizer")  # Reduces GPU memory usage
-        options.add_argument("--disable-plugins")
-        options.add_argument("--disable-popup-blocking")
-        options.add_argument("--disable-infobars")
-        options.add_argument("--incognito")  # Reduces cache/history memory usage
-        options.add_argument("--aggressive-cache-discard")
-        options.add_argument("--disable-cache")
-        options.add_argument("--disable-application-cache")
-        options.add_argument("--disable-offline-load-stale-cache")
-        options.add_argument("--disk-cache-size=0")
-        options.add_argument("--disable-background-networking")
-        options.add_argument("--disable-component-extensions-with-background-pages")
-        options.add_argument("--disable-sync")
-        options.add_argument("--disable-translate")
-        options.add_argument("--hide-scrollbars")
-        options.add_argument("--metrics-recording-only")
-        options.add_argument("--mute-audio")
-        options.add_argument("--no-first-run")
-        options.add_argument("--safebrowsing-disable-auto-update")
+        # options.add_argument("--disable-setuid-sandbox")
+        # options.add_argument("--window-size=800,600")
+        # options.add_argument("--single-process")  # Reduces memory footprint
+        # options.add_argument("--disable-software-rasterizer")  # Reduces GPU memory usage
+        # options.add_argument("--disable-plugins")
+        # options.add_argument("--disable-popup-blocking")
+        # options.add_argument("--disable-infobars")
+        # options.add_argument("--incognito")  # Reduces cache/history memory usage
+        # options.add_argument("--aggressive-cache-discard")
+        # options.add_argument("--disable-cache")
+        # options.add_argument("--disable-application-cache")
+        # options.add_argument("--disable-offline-load-stale-cache")
+        # options.add_argument("--disk-cache-size=0")
+        # options.add_argument("--disable-background-networking")
+        # options.add_argument("--disable-component-extensions-with-background-pages")
+        # options.add_argument("--disable-sync")
+        # options.add_argument("--disable-translate")
+        # options.add_argument("--hide-scrollbars")
+        # options.add_argument("--metrics-recording-only")
+        # options.add_argument("--mute-audio")
+        # options.add_argument("--no-first-run")
+        # options.add_argument("--safebrowsing-disable-auto-update")
         options.add_argument("--disable-search-engine-choice-screen")  # 153
         options.page_load_strategy = "eager"
 
