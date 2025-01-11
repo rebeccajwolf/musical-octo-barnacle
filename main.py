@@ -393,21 +393,8 @@ def keep_alive():
         logging.info("Space is active: " + time.strftime("%Y-%m-%d %H:%M:%S"))
         time.sleep(300)  # Log every 5 minutes
 
-def gradio_template():
-    # Create a simple Gradio interface
-    def greet(name):
-        return "Hello " + name + "!"
-
-    iface = gr.Interface(
-        fn=greet,
-        inputs="text",
-        outputs="text",
-        title="App is Running...",
-        description="This space stays active while running"
-    )
-
-    # Launch the interface
-    iface.launch(server_name="0.0.0.0", server_port=7860)
+def greet(name):
+    return "Hello " + name + "!"
 
 def time_left(sleep_time, step=60):
     for _ in range(sleep_time, 0, (-1)*step):
@@ -440,7 +427,16 @@ if __name__ == "__main__":
     keep_alive_thread = Thread(target=keep_alive)
     keep_alive_thread.daemon = True
     keep_alive_thread.start()
-    gradio_template()
+    iface = gr.Interface(
+        fn=greet,
+        inputs="text",
+        outputs="text",
+        title="App is Running...",
+        description="This space stays active while running"
+    )
+
+    # Launch the interface
+    iface.launch(server_name="0.0.0.0", server_port=7860)
     downloadWebDriver()
     # downloadWebDriverv2()
     createDisplay()
