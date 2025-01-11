@@ -440,6 +440,7 @@ if __name__ == "__main__":
     keep_alive_thread = Thread(target=keep_alive)
     keep_alive_thread.daemon = True
     keep_alive_thread.start()
+    gradio_template()
     downloadWebDriver()
     # downloadWebDriverv2()
     createDisplay()
