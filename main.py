@@ -36,8 +36,6 @@ import os
 import wget
 import zipfile
 
-# logging.basicConfig(level=logging.INFO)
-# logger = logging.getLogger(__name__)
 
 def create_accounts_json_from_env():
     """Creates accounts.json file from ACCOUNTS environment variable.
@@ -207,7 +205,7 @@ def setupLogging():
         # }
     # )
     logging.basicConfig(
-        level=logging.getLevelName(CONFIG.get("logging").get("level").upper()),
+        level=logging.INFO,
         format=_format,
         handlers=[
             handlers.TimedRotatingFileHandler(
@@ -220,6 +218,8 @@ def setupLogging():
             terminalHandler,
         ],
     )
+
+    logging.getLogger().setLevel(logging.INFO)
 
 
 def argumentParser() -> argparse.Namespace:
@@ -479,6 +479,7 @@ def job():
 
 if __name__ == "__main__":
     setupLogging()
+    logging.info("Starting application...")
     # Start the keep-alive thread
     keep_alive_thread = Thread(target=keep_alive)
     keep_alive_thread.daemon = True
