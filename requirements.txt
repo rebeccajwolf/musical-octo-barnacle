@@ -22,3 +22,4 @@ wget
 pyvirtualdisplay
 uvicorn
 fastapi
+gradio>=3.50.2
