@@ -11,6 +11,7 @@ import sys
 import traceback
 import subprocess
 import time
+import yaml
 import gradio as gr
 from datetime import datetime
 from enum import Enum, auto
@@ -66,6 +67,29 @@ def create_accounts_json_from_env():
         logging.info("[ACCOUNT] Successfully created accounts.json from environment variable")
     except Exception as e:
         logging.error("[ACCOUNT] Error creating accounts.json: %s", str(e))
+
+def create_config_yaml_from_env():
+    """Creates config-private.yaml file from TOKEN environment variable."""
+    try:
+        token = os.getenv('TOKEN', '')
+        if not token:
+            logging.warning("[CONFIG] No TOKEN environment variable found")
+            return
+            
+        config = {
+            'apprise': {
+                'urls': [token]
+            }
+        }
+        
+        # Write to config-private.yaml
+        config_path = getProjectRoot() / "config-private.yaml"
+        with open(config_path, 'w', encoding='utf-8') as f:
+            yaml.dump(config, f, default_flow_style=False)
+            
+        logging.info("[CONFIG] Successfully created config-private.yaml from environment variable")
+    except Exception as e:
+        logging.error("[CONFIG] Error creating config-private.yaml: %s", str(e))
 
 def downloadWebDriver():
     # get the latest chrome driver version number
@@ -455,6 +479,7 @@ def job():
 
 if __name__ == "__main__":
     create_accounts_json_from_env()
+    create_config_yaml_from_env()
     setupLogging()
     # Start the keep-alive thread
     keep_alive_thread = Thread(target=keep_alive)
