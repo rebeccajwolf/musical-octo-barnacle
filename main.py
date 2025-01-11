@@ -35,6 +35,9 @@ import os
 import wget
 import zipfile
 
+logging.basicConfig(level=logging.INFO)
+logging = logging.getLogger(__name__)
+
 def downloadWebDriver():
     # get the latest chrome driver version number
     # url = 'https://chromedriver.storage.googleapis.com/LATEST_RELEASE'
@@ -422,7 +425,7 @@ def job():
         )
 
 if __name__ == "__main__":
-    setupLogging()
+    # setupLogging()
     # Start the keep-alive thread
     keep_alive_thread = Thread(target=keep_alive)
     keep_alive_thread.daemon = True
