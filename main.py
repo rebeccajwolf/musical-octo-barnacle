@@ -447,7 +447,7 @@ def keep_alive():
     """Keep-alive function that runs in a separate thread"""
     while True:
         logging.info("Space is active: " + time.strftime("%Y-%m-%d %H:%M:%S"))
-        time.sleep(300)  # Log every 5 minutes
+        time.sleep(60)  # Log every 5 minutes
 
 def greet(name):
     return "Hello " + name + "!"

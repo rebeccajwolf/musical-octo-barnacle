@@ -284,7 +284,7 @@ class Activities:
         except Exception:
             logging.error(f"[ACTIVITY] Error doing {activityTitle}", exc_info=True)
         # todo Make configurable
-        sleep(randint(300, 600))
+        sleep(randint(60, 180))
         self.browser.utils.resetTabs()
 
     def completeActivities(self):
