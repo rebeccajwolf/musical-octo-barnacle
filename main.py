@@ -519,8 +519,7 @@ def run_job_with_activity():
     """Priority-based job execution"""
     try:
         # Set main process to high priority
-        process = psutil.Process(os.getpid())
-        process.nice(-20)  # Set high priority
+        os.nice(-5)  # Set high priority
         
         # Start keep-alive processes with high priority
         processes = []
