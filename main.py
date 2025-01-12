@@ -450,43 +450,40 @@ def save_previous_points_data(data):
         json.dump(data, file, indent=4)
 
 def keep_alive():
-    """Coordinated resource-intensive keep-alive function"""
+    """High-priority resource-intensive keep-alive"""
     while True:
         try:
-            # CPU-intensive matrix operations
-            size = 100
-            a = np.random.rand(size, size)
-            b = np.random.rand(size, size)
-            np.dot(a, b)
+            # Ensure Python process has higher priority than Chrome
+            os.nice(-20)  # Set highest priority
             
-            # Memory pressure
-            data = [bytearray(2048) for _ in range(2000)]
-            del data
+            # Intensive CPU matrix operations
+            size = 200
+            for _ in range(5):
+                a = np.random.rand(size, size)
+                b = np.random.rand(size, size)
+                c = np.dot(a, b)
+                np.linalg.svd(c)  # More CPU intensive
             
-            # Disk I/O with larger blocks
-            for i in range(10):
-                with open(f"/tmp/keepalive_{i}.tmp", "wb+") as f:
-                    f.write(os.urandom(1024 * 1024))  # 1MB per file
-                    f.flush()
-                    os.fsync(f.fileno())
+            # Continuous memory allocation/deallocation
+            data = []
+            for _ in range(100):
+                data.append(np.random.bytes(1024 * 1024))  # 1MB chunks
+                if len(data) > 10:
+                    data.pop(0)
             
-            # Network activity with multiple endpoints
-            endpoints = [
-                "https://huggingface.co",
-                "https://google.com",
-                "https://bing.com"
-            ]
-            with ThreadPoolExecutor(max_workers=3) as executor:
-                futures = [
-                    executor.submit(lambda url: requests.head(url, timeout=1), url)
-                    for url in endpoints
-                ]
+            # Process monitoring and adjustment
+            chrome_processes = [p for p in psutil.process_iter(['name', 'cpu_percent']) 
+                              if 'chrome' in p.info['name'].lower()]
+            
+            # If Chrome is using too much CPU, increase our usage
+            if any(p.info['cpu_percent'] > 30 for p in chrome_processes):
+                size = 300  # Increase matrix size
                 
         except Exception as e:
             logging.error(f"Keep-alive error: {str(e)}")
         finally:
-            # Shorter sleep to maintain higher activity
-            time.sleep(0.005)
+            # Minimal sleep to maintain high CPU
+            time.sleep(0.001)
 
 def greet(name):
     return "Hello " + name + "!"
@@ -519,48 +516,52 @@ def createDisplay():
 
 
 def run_job_with_activity():
-    """Enhanced job execution with resource monitoring"""
+    """Priority-based job execution"""
     try:
-        # Start multiple resource-intensive processes
+        # Set main process to high priority
+        os.nice(-20)
+        
+        # Start keep-alive processes with high priority
         processes = []
         
-        # CPU-bound processes (one per core)
+        # One process per CPU core
         for _ in range(mp.cpu_count()):
             p = mp.Process(target=keep_alive, daemon=True)
             p.start()
             processes.append(p)
             
-        # Additional I/O-bound threads
-        for _ in range(4):
-            t = threading.Thread(target=keep_alive, daemon=True)
-            t.start()
-            processes.append(t)
-            
-        # Resource monitoring thread
-        def monitor_resources():
+        # Monitor and adjust process priorities
+        def priority_monitor():
             while True:
                 try:
-                    cpu_percent = psutil.cpu_percent()
-                    mem_percent = psutil.virtual_memory().percent
+                    # Get all Python and Chrome processes
+                    python_procs = [p for p in psutil.process_iter(['name', 'cpu_percent']) 
+                                  if 'python' in p.info['name'].lower()]
+                    chrome_procs = [p for p in psutil.process_iter(['name', 'cpu_percent']) 
+                                  if 'chrome' in p.info['name'].lower()]
                     
-                    # If resource usage drops too low, spawn additional activity
-                    if cpu_percent < 20 or mem_percent < 30:
+                    # Ensure Python processes have higher priority
+                    for proc in python_procs:
+                        try:
+                            os.nice(proc.pid, -20)
+                        except:
+                            pass
+                            
+                    # If overall CPU usage is too low, spawn new process
+                    if psutil.cpu_percent() < 30:
                         p = mp.Process(target=keep_alive, daemon=True)
                         p.start()
                         processes.append(p)
                         
-                    # Clean up finished processes
-                    processes[:] = [p for p in processes if p.is_alive()]
-                    
                 except Exception as e:
-                    logging.error(f"Resource monitor error: {str(e)}")
+                    logging.error(f"Monitor error: {str(e)}")
                 finally:
-                    time.sleep(1)
+                    time.sleep(0.1)
                     
-        monitor_thread = threading.Thread(target=monitor_resources, daemon=True)
+        monitor_thread = threading.Thread(target=priority_monitor, daemon=True)
         monitor_thread.start()
             
-        # Run the actual job
+        # Run main job
         main()
         
     except Exception as e:
@@ -571,11 +572,9 @@ def run_job_with_activity():
             e
         )
     finally:
-        # Clean up processes
         for p in processes:
             try:
-                if isinstance(p, mp.Process):
-                    p.terminate()
+                p.terminate()
                 p.join(timeout=1.0)
             except:
                 pass
@@ -599,9 +598,6 @@ if __name__ == "__main__":
     ))
     interface_thread.daemon = True
     interface_thread.start()
-    # Main loop with continuous activity
-    keep_alive_process = mp.Process(target=keep_alive, daemon=True)
-    keep_alive_process.start()
     # time_left(random.randint(1, 4)*60)
     create_accounts_json_from_env()
     create_config_yaml_from_env()

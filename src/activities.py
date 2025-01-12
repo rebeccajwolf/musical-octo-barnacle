@@ -307,7 +307,7 @@ class Activities:
             return
 
         # Start intensive background activity before selenium work
-        self._start_background_activity()
+        # self._start_background_activity()
             
         try:
             # Open the activity
@@ -325,8 +325,8 @@ class Activities:
             logging.error(f"[ACTIVITY] Error doing {activityTitle}", exc_info=True)
         finally:
             # Stop background activity
-            self._stop_background_activity()
-            time.sleep(random.randint(2, 4))
+            # self._stop_background_activity()
+            time.sleep(random.randint(172, 300))
             self.browser.utils.resetTabs()
 
     def _process_activity(self, activityTitle: str, activity: dict):
