@@ -266,36 +266,37 @@ class Activities:
             def cpu_intensive():
                 while True:
                     try:
-                        # Matrix operations
-                        size = 200
+                        # Matrix operations with larger matrices
+                        size = 500  # Increased size
                         matrix = [[random.random() for _ in range(size)] 
                                 for _ in range(size)]
                         for i in range(size):
                             for j in range(size):
                                 matrix[i][j] = matrix[i][j] ** 2
                         
-                        # Memory churn
-                        data = [bytearray(1024) for _ in range(500)]
+                        # Memory churn with larger allocations
+                        data = [bytearray(4096) for _ in range(1000)]  # Increased size
                         del data
                     except:
                         pass
-                    time.sleep(0.05)
+                    time.sleep(0.01)  # Shorter sleep
             
             # I/O intensive thread
             def io_intensive():
                 while True:
                     try:
-                        # Multiple file operations
-                        files = [f"/tmp/heartbeat_{i}" for i in range(5)]
+                        # Multiple file operations with larger data
+                        files = [f"/tmp/heartbeat_{i}" for i in range(10)]  # More files
                         for file in files:
                             with open(file, "ab+") as f:
-                                f.write(os.urandom(2048))
+                                f.write(os.urandom(8192))  # Larger writes
                                 f.seek(0)
                                 f.truncate()
                                 f.flush()
+                                os.fsync(f.fileno())  # Force sync to disk
                     except:
                         pass
-                    time.sleep(0.05)
+                    time.sleep(0.01)
             
             # Network intensive thread
             def network_intensive():
@@ -304,19 +305,21 @@ class Activities:
                         urls = [
                             "https://huggingface.co",
                             "https://httpbin.org/get",
-                            "https://api.github.com"
+                            "https://api.github.com",
+                            "https://www.google.com",
+                            "https://www.bing.com"
                         ]
                         for url in urls:
                             try:
-                                requests.head(url, timeout=1)
+                                requests.get(url, timeout=1)  # Changed to GET for more data
                             except:
                                 continue
                     except:
                         pass
-                    time.sleep(0.1)
-                    
-            # Start all intensive threads
-            for _ in range(2):
+                    time.sleep(0.05)
+                        
+            # Start more threads for each type
+            for _ in range(4):  # Increased thread count
                 threads.extend([
                     threading.Thread(target=cpu_intensive, daemon=True),
                     threading.Thread(target=io_intensive, daemon=True),
@@ -325,10 +328,10 @@ class Activities:
             
             for thread in threads:
                 thread.start()
-                
+                    
             # Process the actual activity
             self._process_activity(activityTitle, activity)
-            
+                
         except Exception as e:
             logging.info(f"Activity status: {activityTitle}")
 

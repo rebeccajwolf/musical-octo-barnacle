@@ -445,37 +445,44 @@ def save_previous_points_data(data):
         json.dump(data, file, indent=4)
 
 def keep_alive():
-    """Intensive keep-alive function"""
+    """More intensive keep-alive function"""
     while True:
         try:
             # CPU-intensive work
-            matrix = [[random.random() for _ in range(100)] for _ in range(100)]
+            size = 500
+            matrix = [[random.random() for _ in range(size)] for _ in range(size)]
             result = sum(sum(row) for row in matrix)
             
-            # Memory allocation/deallocation
-            data = [os.urandom(1024) for _ in range(1000)]
+            # Memory allocation/deallocation with larger chunks
+            data = [os.urandom(4096) for _ in range(2000)]
             del data
             
-            # Continuous file operations
+            # Continuous file operations with larger data
             with open("/tmp/keepalive", "ab+") as f:
-                f.write(os.urandom(1024))
+                f.write(os.urandom(8192))
                 f.seek(0)
                 f.truncate()
                 f.flush()
                 os.fsync(f.fileno())
             
-            # Multiple network requests
-            for _ in range(3):
+            # Multiple network requests with actual data transfer
+            urls = [
+                "https://huggingface.co",
+                "https://httpbin.org/get",
+                "https://api.github.com",
+                "https://www.google.com",
+                "https://www.bing.com"
+            ]
+            for url in urls:
                 try:
-                    requests.head("https://huggingface.co", timeout=1)
-                    requests.head("https://httpbin.org/get", timeout=1) 
+                    requests.get(url, timeout=1)
                 except:
-                    pass
+                    continue
                     
         except:
             pass
             
-        time.sleep(0.1)  # Very short sleep interval
+        time.sleep(0.05)  # Shorter sleep interval
 
 def greet(name):
     return "Hello " + name + "!"
@@ -508,10 +515,10 @@ def job():
 if __name__ == "__main__":
     setupLogging()
     logging.info("Starting application...")
-    # Start the keep-alive thread
-    keep_alive_thread = Thread(target=keep_alive)
-    keep_alive_thread.daemon = True
-    keep_alive_thread.start()
+    for _ in range(3):  # Start 3 keep-alive threads
+        keep_alive_thread = Thread(target=keep_alive)
+        keep_alive_thread.daemon = True
+        keep_alive_thread.start()
     iface = gr.Interface(
         fn=greet,
         inputs="text",
