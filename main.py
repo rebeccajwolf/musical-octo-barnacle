@@ -17,6 +17,7 @@ from datetime import datetime
 from enum import Enum, auto
 from pyvirtualdisplay import Display
 from threading import Thread
+from pathlib import Path
 
 from src import (
     Browser,
@@ -447,12 +448,19 @@ def keep_alive():
     """Keep-alive function that runs in a separate thread"""
     while True:
         try:
+            # Log activity
             logging.info("Space is active: " + time.strftime("%Y-%m-%d %H:%M:%S"))
-            # Make a request to the Gradio interface to keep it alive
+            
+            # Make multiple requests to different endpoints to ensure activity
             requests.get("http://127.0.0.1:7860/", timeout=5)
+            requests.post("http://127.0.0.1:7860/api/predict", json={"data": ["keepalive"]}, timeout=5)
+            
+            # Touch a file to show filesystem activity
+            Path("/tmp/keepalive").touch()
+            
         except Exception as e:
             logging.warning(f"Keep-alive check failed: {str(e)}")
-        time.sleep(30)  # Check every 30 seconds
+        time.sleep(15)  # Check every 15 seconds
 
 def greet(name):
     return "Hello " + name + "!"

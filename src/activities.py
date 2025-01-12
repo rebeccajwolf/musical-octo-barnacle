@@ -253,7 +253,7 @@ class Activities:
     def _process_activity_with_heartbeat(self, activityTitle: str, activity: dict):
         """Process activity while maintaining heartbeat"""
         try:
-            sleep(10)
+            sleep(5)  # Reduced from 10
             try:
                 if self.webdriver.find_element(By.XPATH, '//*[@id="modal-host"]/div[2]/button').is_displayed():
                     self.webdriver.find_element(By.XPATH, '//*[@id="modal-host"]/div[2]/button').click()
@@ -262,7 +262,7 @@ class Activities:
                     self.browser.utils.switchToNewTab()
             except:
                 pass
-            sleep(7)
+            sleep(5)  # Reduced from 7
             
             with contextlib.suppress(TimeoutException):
                 searchbar = self.browser.utils.waitUntilClickable(By.ID, "sb_form_q")
@@ -288,15 +288,20 @@ class Activities:
             else:
                 self.completeSearch()
                 
-            # Break up long sleep into smaller chunks with heartbeat
-            total_sleep = randint(60, 180)  # 1-3 minutes total
-            chunk_size = 30  # 30 seconds per chunk
+            # Break up long sleep into smaller chunks with more frequent heartbeat
+            total_sleep = randint(30, 90)  # Reduced from 60-180 to 30-90 seconds
+            chunk_size = 15  # Reduced from 30 to 15 seconds
             
             for _ in range(0, total_sleep, chunk_size):
-                # Perform a small action to keep session alive
+                # Perform multiple actions to keep session alive
                 try:
+                    # Scroll action
                     self.webdriver.execute_script("window.scrollBy(0, 10);")
-                    logging.debug("Heartbeat: Small scroll action")
+                    # Move mouse
+                    self.webdriver.execute_script(
+                        "document.body.dispatchEvent(new MouseEvent('mousemove', {clientX: Math.random()*500, clientY: Math.random()*500}));"
+                    )
+                    logging.debug("Heartbeat: Activity simulation")
                 except:
                     pass
                 sleep(chunk_size)
