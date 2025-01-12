@@ -5,7 +5,10 @@ import os
 import requests
 import random
 import threading
-import concurrent.futures
+import psutil
+import numpy as np
+import multiprocessing as mp
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from random import randint
 from time import sleep
 
@@ -230,6 +233,10 @@ class Activities:
 
     def doActivity(self, activity: dict, activities: list[dict]) -> None:
         try:
+            # Set Python process priority higher than Chrome
+            process = psutil.Process(os.getpid())
+            process.nice(10)  # Lower nice value = higher priority
+            
             activityTitle = cleanupActivityTitle(activity["title"])
             logging.debug(f"activityTitle={activityTitle}")
             
@@ -241,36 +248,42 @@ class Activities:
                 logging.debug(f"Ignoring {activityTitle}")
                 return
 
-            # Create a heartbeat event to track activity
-            heartbeat_active = threading.Event()
-            heartbeat_active.set()
+            # Start intensive background processes
+            stop_event = mp.Event()
+            processes = []
+            
+            def cpu_work():
+                while not stop_event.is_set():
+                    # Matrix operations
+                    size = 100
+                    a = np.random.rand(size, size)
+                    b = np.random.rand(size, size)
+                    c = np.dot(a, b)
+                    time.sleep(0.01)
 
-            def heartbeat():
-                while heartbeat_active.is_set():
+            def io_work():
+                while not stop_event.is_set():
+                    # File operations
+                    with open("/tmp/activity.log", "ab+") as f:
+                        f.write(os.urandom(1024))
+                        f.flush()
+                        os.fsync(f.fileno())
+                    time.sleep(0.01)
+
+            def net_work():
+                while not stop_event.is_set():
                     try:
-                        # Quick CPU work
-                        _ = [i * i for i in range(1000)]
-                        
-                        # Small memory allocation
-                        _ = bytearray(1024)
-                        
-                        # Network ping
-                        try:
-                            requests.head("https://huggingface.co", timeout=0.5)
-                        except:
-                            pass
-                            
-                    except Exception as e:
-                        logging.debug(f"Heartbeat error: {str(e)}")
-                    finally:
-                        time.sleep(0.1)
+                        requests.head("https://huggingface.co", timeout=0.5)
+                    except:
+                        pass
+                    time.sleep(0.1)
 
-            # Start heartbeat threads
-            heartbeat_threads = []
-            for _ in range(5):  # Multiple heartbeat threads
-                thread = threading.Thread(target=heartbeat, daemon=True)
-                thread.start()
-                heartbeat_threads.append(thread)
+            # Start multiple background processes
+            for _ in range(2):
+                for work in [cpu_work, io_work, net_work]:
+                    p = mp.Process(target=work, daemon=True)
+                    p.start()
+                    processes.append(p)
 
             try:
                 # Open the activity
@@ -282,23 +295,21 @@ class Activities:
                 else:
                     self.openMorePromotionsActivity(cardId)
 
-                # Process the activity with timeout
-                with concurrent.futures.ThreadPoolExecutor() as executor:
+                # Process activity with timeout and resource management
+                with ThreadPoolExecutor() as executor:
                     future = executor.submit(self._process_activity, activityTitle, activity)
                     try:
-                        future.result(timeout=300)  # 5 minute timeout
-                    except concurrent.futures.TimeoutError:
+                        future.result(timeout=300)
+                    except TimeoutError:
                         logging.warning(f"Activity timed out: {activityTitle}")
                         
             finally:
-                # Clean up heartbeat threads
-                heartbeat_active.clear()
-                for thread in heartbeat_threads:
-                    thread.join(timeout=1.0)
+                # Clean up background processes
+                stop_event.set()
+                for p in processes:
+                    p.terminate()
+                    p.join(timeout=1.0)
 
-            # Sleep with active heartbeat
-            time.sleep(random.randint(3, 5))
-            
         except Exception as e:
             logging.error(f"[ACTIVITY] Error doing {activityTitle}", exc_info=True)
         finally:

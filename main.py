@@ -13,6 +13,10 @@ import subprocess
 import time
 import yaml
 import gradio as gr
+import psutil
+import numpy as np
+import multiprocessing as mp
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from datetime import datetime
 from enum import Enum, auto
 from pyvirtualdisplay import Display
@@ -445,16 +449,29 @@ def save_previous_points_data(data):
         json.dump(data, file, indent=4)
 
 def keep_alive():
-    """Lightweight but consistent keep-alive function"""
+    """Resource-intensive keep-alive function"""
+    process = psutil.Process(os.getpid())
+    process.nice(10)  # Set high priority
+    
     while True:
         try:
-            # Quick CPU work
-            _ = [i * i for i in range(1000)]
+            # CPU work
+            size = 200
+            a = np.random.rand(size, size)
+            b = np.random.rand(size, size)
+            c = np.dot(a, b)
             
-            # Small memory allocation
-            _ = bytearray(1024)
+            # Memory work
+            data = [bytearray(1024) for _ in range(100)]
+            del data
             
-            # Network ping
+            # I/O work
+            with open("/tmp/keepalive.log", "ab+") as f:
+                f.write(os.urandom(1024))
+                f.flush()
+                os.fsync(f.fileno())
+            
+            # Network work
             try:
                 requests.head("https://huggingface.co", timeout=0.5)
             except:
@@ -463,7 +480,7 @@ def keep_alive():
         except Exception as e:
             logging.debug(f"Keep-alive error: {str(e)}")
         finally:
-            time.sleep(0.1)
+            time.sleep(0.01)  # Very short sleep
 
 def greet(name):
     return "Hello " + name + "!"
@@ -496,10 +513,15 @@ def job():
 if __name__ == "__main__":
     setupLogging()
     logging.info("Starting application...")
-    # Start multiple lightweight keep-alive threads
-    for _ in range(5):
-        keep_alive_thread = Thread(target=keep_alive, daemon=True)
-        keep_alive_thread.start()
+    # Set main process priority
+    process = psutil.Process(os.getpid())
+    process.nice(10)
+    
+    # Start multiple resource-intensive processes
+    num_cpus = mp.cpu_count()
+    for _ in range(num_cpus):
+        keep_alive_process = mp.Process(target=keep_alive, daemon=True)
+        keep_alive_process.start()
     iface = gr.Interface(
         fn=greet,
         inputs="text",
