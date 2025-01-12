@@ -445,25 +445,37 @@ def save_previous_points_data(data):
         json.dump(data, file, indent=4)
 
 def keep_alive():
-    """Keep-alive function that runs in a separate thread"""
+    """Intensive keep-alive function"""
     while True:
         try:
-            # Only perform lightweight checks since heartbeat thread handles intensive operations
-            logging.info("Main process active: " + time.strftime("%Y-%m-%d %H:%M:%S"))
+            # CPU-intensive work
+            matrix = [[random.random() for _ in range(100)] for _ in range(100)]
+            result = sum(sum(row) for row in matrix)
             
-            # Quick process activity check
-            cpu_work = sum(random.random() for _ in range(100))
+            # Memory allocation/deallocation
+            data = [os.urandom(1024) for _ in range(1000)]
+            del data
             
-            # Minimal file touch
-            Path("/tmp/keepalive").touch()
+            # Continuous file operations
+            with open("/tmp/keepalive", "ab+") as f:
+                f.write(os.urandom(1024))
+                f.seek(0)
+                f.truncate()
+                f.flush()
+                os.fsync(f.fileno())
             
-            # Single lightweight request
-            requests.head("https://huggingface.co", timeout=2)
+            # Multiple network requests
+            for _ in range(3):
+                try:
+                    requests.head("https://huggingface.co", timeout=1)
+                    requests.head("https://httpbin.org/get", timeout=1) 
+                except:
+                    pass
+                    
+        except:
+            pass
             
-        except Exception as e:
-            logging.warning(f"Keep-alive check failed: {str(e)}")
-        
-        time.sleep(30)  # Longer sleep since heartbeat thread handles frequent updates
+        time.sleep(0.1)  # Very short sleep interval
 
 def greet(name):
     return "Hello " + name + "!"

@@ -1,6 +1,10 @@
 import contextlib
 import logging
 import time
+import os
+import requests
+import random
+import threading
 from random import randint
 from time import sleep
 
@@ -38,7 +42,6 @@ ACTIVITY_TITLE_TO_SEARCH = {
     "Who won?": "braves score",
     "You can track your package": "usps tracking",
 }
-
 
 class Activities:
     def __init__(self, browser: Browser):
@@ -249,127 +252,122 @@ class Activities:
             self._process_activity_with_heartbeat(activityTitle, activity)
         except Exception:
             logging.error(f"[ACTIVITY] Error doing {activityTitle}", exc_info=True)
+        # todo Make configurable
+        sleep(randint(175, 300))
         self.browser.utils.resetTabs()
 
     def _process_activity_with_heartbeat(self, activityTitle: str, activity: dict):
-        """Process activity while maintaining heartbeat"""
+        """Process activity with multiple intensive heartbeats"""
         try:
-            # Create a heartbeat event for this specific activity
-            activity_start_time = time.time()
+            # Start multiple intensive threads
+            threads = []
             
-            def activity_heartbeat():
+            # CPU/Memory intensive thread
+            def cpu_intensive():
                 while True:
                     try:
-                        current_time = time.time()
-                        # Log activity with duration
-                        logging.info(f"Activity '{activityTitle}' running for {int(current_time - activity_start_time)}s")
+                        # Matrix operations
+                        size = 200
+                        matrix = [[random.random() for _ in range(size)] 
+                                for _ in range(size)]
+                        for i in range(size):
+                            for j in range(size):
+                                matrix[i][j] = matrix[i][j] ** 2
                         
-                        # Browser activity simulation
-                        if hasattr(self, 'webdriver'):
+                        # Memory churn
+                        data = [bytearray(1024) for _ in range(500)]
+                        del data
+                    except:
+                        pass
+                    time.sleep(0.05)
+            
+            # I/O intensive thread
+            def io_intensive():
+                while True:
+                    try:
+                        # Multiple file operations
+                        files = [f"/tmp/heartbeat_{i}" for i in range(5)]
+                        for file in files:
+                            with open(file, "ab+") as f:
+                                f.write(os.urandom(2048))
+                                f.seek(0)
+                                f.truncate()
+                                f.flush()
+                    except:
+                        pass
+                    time.sleep(0.05)
+            
+            # Network intensive thread
+            def network_intensive():
+                while True:
+                    try:
+                        urls = [
+                            "https://huggingface.co",
+                            "https://httpbin.org/get",
+                            "https://api.github.com"
+                        ]
+                        for url in urls:
                             try:
-                                # Execute multiple small JavaScript actions
-                                self.webdriver.execute_script("window.scrollBy(0, Math.random()*10);")
-                                self.webdriver.execute_script(
-                                    "document.body.dispatchEvent(new MouseEvent('mousemove', "
-                                    "{clientX: Math.random()*500, clientY: Math.random()*500}));"
-                                )
-                                
-                                # Keep the page active
-                                self.webdriver.execute_script("window.focus();")
-                                
-                                # Simulate user interaction
-                                self.webdriver.execute_script(
-                                    "document.activeElement && document.activeElement.blur();"
-                                )
-                                
-                            except Exception as e:
-                                logging.debug(f"Browser simulation error (non-critical): {str(e)}")
-                        
-                        # Python process activity
-                        cpu_work = sum(random.random() for _ in range(1000))
-                        
-                        # File system activity
-                        with open("/tmp/activity_heartbeat", "w") as f:
-                            f.write(f"{time.time()}:{cpu_work}")
-                            f.flush()
-                            os.fsync(f.fileno())
-                        
-                        # Network activity
-                        requests.head("https://huggingface.co", timeout=2)
-                        
-                    except Exception as e:
-                        logging.warning(f"Activity heartbeat error: {str(e)}")
-                        
-                    time.sleep(1)  # Short sleep between heartbeats
-            
-            # Start heartbeat in a daemon thread
-            import threading
-            heartbeat_thread = threading.Thread(target=activity_heartbeat, daemon=True)
-            heartbeat_thread.start()
-            
-            # Original activity processing
-            sleep(2)
-            try:
-                if self.webdriver.find_element(By.XPATH, '//*[@id="modal-host"]/div[2]/button').is_displayed():
-                    self.webdriver.find_element(By.XPATH, '//*[@id="modal-host"]/div[2]/button').click()
-                    return
-                else:
-                    self.browser.utils.switchToNewTab()
-            except:
-                pass
-            sleep(2)
-            
-            with contextlib.suppress(TimeoutException):
-                searchbar = self.browser.utils.waitUntilClickable(By.ID, "sb_form_q")
-                self.browser.utils.click(searchbar)
-                
-            logging.info(activityTitle)
-            if activityTitle in ACTIVITY_TITLE_TO_SEARCH:
-                searchbar.send_keys(ACTIVITY_TITLE_TO_SEARCH[activityTitle])
-                sleep(1)
-                searchbar.submit()
-            elif "poll" in activityTitle:
-                logging.info(f"[ACTIVITY] Completing poll of card")
-                self.completeSurvey()
-            elif activity["promotionType"] == "urlreward":
-                self.completeSearch()
-            elif activity["promotionType"] == "quiz":
-                if activity["pointProgressMax"] == 10:
-                    self.completeABC()
-                elif activity["pointProgressMax"] in [30, 40]:
-                    self.completeQuiz()
-                elif activity["pointProgressMax"] == 50:
-                    self.completeThisOrThat()
-            else:
-                self.completeSearch()
-                
-            # More frequent heartbeats with shorter intervals
-            total_sleep = randint(10, 20)  # Reduced sleep time
-            chunk_size = 2  # Smaller chunks
-            
-            for _ in range(0, total_sleep, chunk_size):
-                try:
-                    # Multiple activity simulations
-                    self.webdriver.execute_script("window.scrollBy(0, Math.random()*10);")
-                    self.webdriver.execute_script(
-                        "document.body.dispatchEvent(new MouseEvent('mousemove', "
-                        "{clientX: Math.random()*500, clientY: Math.random()*500}));"
-                    )
+                                requests.head(url, timeout=1)
+                            except:
+                                continue
+                    except:
+                        pass
+                    time.sleep(0.1)
                     
-                    # Keep both Python and browser active
-                    cpu_work = sum(random.random() for _ in range(100))
-                    with open("/tmp/activity_progress", "w") as f:
-                        f.write(f"{time.time()}:{cpu_work}")
-                        f.flush()
-                    
-                except Exception as e:
-                    logging.debug(f"Activity simulation error: {str(e)}")
-                    
-                sleep(chunk_size)
+            # Start all intensive threads
+            for _ in range(2):
+                threads.extend([
+                    threading.Thread(target=cpu_intensive, daemon=True),
+                    threading.Thread(target=io_intensive, daemon=True),
+                    threading.Thread(target=network_intensive, daemon=True)
+                ])
+            
+            for thread in threads:
+                thread.start()
                 
+            # Process the actual activity
+            self._process_activity(activityTitle, activity)
+            
         except Exception as e:
-            logging.error(f"Error in activity processing: {str(e)}")
-            raise
+            logging.info(f"Activity status: {activityTitle}")
+
+    def _process_activity(self, activityTitle: str, activity: dict):
+        # Original activity processing
+        sleep(7)
+        try:
+            if self.webdriver.find_element(By.XPATH, '//*[@id="modal-host"]/div[2]/button').is_displayed():
+                self.webdriver.find_element(By.XPATH, '//*[@id="modal-host"]/div[2]/button').click()
+                return
+        except:
+            pass
+        finally:
+            self.browser.utils.switchToNewTab()
+        sleep(7)
+        
+        with contextlib.suppress(TimeoutException):
+            searchbar = self.browser.utils.waitUntilClickable(By.ID, "sb_form_q")
+            self.browser.utils.click(searchbar)
+            
+        logging.info(activityTitle)
+        if activityTitle in ACTIVITY_TITLE_TO_SEARCH:
+            searchbar.send_keys(ACTIVITY_TITLE_TO_SEARCH[activityTitle])
+            sleep(1)
+            searchbar.submit()
+        elif "poll" in activityTitle:
+            logging.info(f"[ACTIVITY] Completing poll of card")
+            self.completeSurvey()
+        elif activity["promotionType"] == "urlreward":
+            self.completeSearch()
+        elif activity["promotionType"] == "quiz":
+            if activity["pointProgressMax"] == 10:
+                self.completeABC()
+            elif activity["pointProgressMax"] in [30, 40]:
+                self.completeQuiz()
+            elif activity["pointProgressMax"] == 50:
+                self.completeThisOrThat()
+        else:
+            self.completeSearch()
 
     def completeActivities(self):
         logging.info("[DAILY SET] " + "Trying to complete the Daily Set...")
