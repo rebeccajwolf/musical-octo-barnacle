@@ -205,7 +205,7 @@ def setupLogging():
         # }
     # )
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.DEBUG,
         format=_format,
         handlers=[
             handlers.TimedRotatingFileHandler(
@@ -446,8 +446,13 @@ def save_previous_points_data(data):
 def keep_alive():
     """Keep-alive function that runs in a separate thread"""
     while True:
-        logging.info("Space is active: " + time.strftime("%Y-%m-%d %H:%M:%S"))
-        time.sleep(60)  # Log every 5 minutes
+        try:
+            logging.info("Space is active: " + time.strftime("%Y-%m-%d %H:%M:%S"))
+            # Make a request to the Gradio interface to keep it alive
+            requests.get("http://127.0.0.1:7860/", timeout=5)
+        except Exception as e:
+            logging.warning(f"Keep-alive check failed: {str(e)}")
+        time.sleep(30)  # Check every 30 seconds
 
 def greet(name):
     return "Hello " + name + "!"

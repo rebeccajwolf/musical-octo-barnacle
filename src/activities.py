@@ -245,6 +245,14 @@ class Activities:
                 self.openDailySetActivity(cardId)
             else:
                 self.openMorePromotionsActivity(cardId)
+            self._process_activity_with_heartbeat(activityTitle, activity)
+        except Exception:
+            logging.error(f"[ACTIVITY] Error doing {activityTitle}", exc_info=True)
+        self.browser.utils.resetTabs()
+
+    def _process_activity_with_heartbeat(self, activityTitle: str, activity: dict):
+        """Process activity while maintaining heartbeat"""
+        try:
             sleep(10)
             try:
                 if self.webdriver.find_element(By.XPATH, '//*[@id="modal-host"]/div[2]/button').is_displayed():
@@ -255,23 +263,22 @@ class Activities:
             except:
                 pass
             sleep(7)
+            
             with contextlib.suppress(TimeoutException):
                 searchbar = self.browser.utils.waitUntilClickable(By.ID, "sb_form_q")
                 self.browser.utils.click(searchbar)
+                
             logging.info(activityTitle)
             if activityTitle in ACTIVITY_TITLE_TO_SEARCH:
                 searchbar.send_keys(ACTIVITY_TITLE_TO_SEARCH[activityTitle])
                 sleep(2)
                 searchbar.submit()
             elif "poll" in activityTitle:
-                logging.info(f"[ACTIVITY] Completing poll of card {cardId}")
-                # Complete survey for a specific scenario
+                logging.info(f"[ACTIVITY] Completing poll of card")
                 self.completeSurvey()
             elif activity["promotionType"] == "urlreward":
-                # Complete search for URL reward
                 self.completeSearch()
             elif activity["promotionType"] == "quiz":
-                # Complete different types of quizzes based on point progress max
                 if activity["pointProgressMax"] == 10:
                     self.completeABC()
                 elif activity["pointProgressMax"] in [30, 40]:
@@ -279,13 +286,24 @@ class Activities:
                 elif activity["pointProgressMax"] == 50:
                     self.completeThisOrThat()
             else:
-                # Default to completing search
                 self.completeSearch()
-        except Exception:
-            logging.error(f"[ACTIVITY] Error doing {activityTitle}", exc_info=True)
-        # todo Make configurable
-        sleep(randint(60, 180))
-        self.browser.utils.resetTabs()
+                
+            # Break up long sleep into smaller chunks with heartbeat
+            total_sleep = random.randint(60, 180)  # 1-3 minutes total
+            chunk_size = 30  # 30 seconds per chunk
+            
+            for _ in range(0, total_sleep, chunk_size):
+                # Perform a small action to keep session alive
+                try:
+                    self.webdriver.execute_script("window.scrollBy(0, 10);")
+                    logging.debug("Heartbeat: Small scroll action")
+                except:
+                    pass
+                sleep(chunk_size)
+                
+        except Exception as e:
+            logging.error(f"Error in activity processing: {str(e)}")
+            raise
 
     def completeActivities(self):
         logging.info("[DAILY SET] " + "Trying to complete the Daily Set...")
