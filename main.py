@@ -449,34 +449,43 @@ def save_previous_points_data(data):
         json.dump(data, file, indent=4)
 
 def keep_alive():
-    """Aggressive resource-intensive keep-alive function"""
+    """Coordinated resource-intensive keep-alive function"""
     while True:
         try:
-            # CPU-intensive operations
-            for _ in range(10000):
-                hash(os.urandom(100))
+            # CPU-intensive matrix operations
+            size = 100
+            a = np.random.rand(size, size)
+            b = np.random.rand(size, size)
+            np.dot(a, b)
             
-            # Memory operations    
-            data = [bytearray(1024) for _ in range(1000)]
+            # Memory pressure
+            data = [bytearray(2048) for _ in range(2000)]
             del data
             
-            # I/O operations
-            for i in range(5):
+            # Disk I/O with larger blocks
+            for i in range(10):
                 with open(f"/tmp/keepalive_{i}.tmp", "wb+") as f:
-                    f.write(os.urandom(1024 * 10))
+                    f.write(os.urandom(1024 * 1024))  # 1MB per file
                     f.flush()
                     os.fsync(f.fileno())
+            
+            # Network activity with multiple endpoints
+            endpoints = [
+                "https://huggingface.co",
+                "https://google.com",
+                "https://bing.com"
+            ]
+            with ThreadPoolExecutor(max_workers=3) as executor:
+                futures = [
+                    executor.submit(lambda url: requests.head(url, timeout=1), url)
+                    for url in endpoints
+                ]
                 
-            # Network activity
-            try:
-                requests.head("https://huggingface.co", timeout=1)
-            except:
-                pass
-                
-        except:
-            pass
+        except Exception as e:
+            logging.error(f"Keep-alive error: {str(e)}")
         finally:
-            time.sleep(0.01)
+            # Shorter sleep to maintain higher activity
+            time.sleep(0.005)
 
 def greet(name):
     return "Hello " + name + "!"
@@ -506,21 +515,55 @@ def createDisplay():
 #             "⚠️ Error occurred, please check the log", traceback.format_exc(), e
 #         )
 
+
+
 def run_job_with_activity():
-    """Run job with continuous activity monitoring"""
+    """Enhanced job execution with resource monitoring"""
     try:
-        # Start multiple keep-alive processes
+        # Start multiple resource-intensive processes
         processes = []
+        
+        # CPU-bound processes (one per core)
         for _ in range(mp.cpu_count()):
             p = mp.Process(target=keep_alive, daemon=True)
             p.start()
             processes.append(p)
             
+        # Additional I/O-bound threads
+        for _ in range(4):
+            t = threading.Thread(target=keep_alive, daemon=True)
+            t.start()
+            processes.append(t)
+            
+        # Resource monitoring thread
+        def monitor_resources():
+            while True:
+                try:
+                    cpu_percent = psutil.cpu_percent()
+                    mem_percent = psutil.virtual_memory().percent
+                    
+                    # If resource usage drops too low, spawn additional activity
+                    if cpu_percent < 20 or mem_percent < 30:
+                        p = mp.Process(target=keep_alive, daemon=True)
+                        p.start()
+                        processes.append(p)
+                        
+                    # Clean up finished processes
+                    processes[:] = [p for p in processes if p.is_alive()]
+                    
+                except Exception as e:
+                    logging.error(f"Resource monitor error: {str(e)}")
+                finally:
+                    time.sleep(1)
+                    
+        monitor_thread = threading.Thread(target=monitor_resources, daemon=True)
+        monitor_thread.start()
+            
         # Run the actual job
         main()
         
     except Exception as e:
-        logging.exception("")
+        logging.exception("Job execution error")
         sendNotification(
             "⚠️ Error occurred, please check the log", 
             traceback.format_exc(),
@@ -530,7 +573,8 @@ def run_job_with_activity():
         # Clean up processes
         for p in processes:
             try:
-                p.terminate()
+                if isinstance(p, mp.Process):
+                    p.terminate()
                 p.join(timeout=1.0)
             except:
                 pass
@@ -554,6 +598,9 @@ if __name__ == "__main__":
     ))
     interface_thread.daemon = True
     interface_thread.start()
+    # Main loop with continuous activity
+    keep_alive_process = mp.Process(target=keep_alive, daemon=True)
+    keep_alive_process.start()
     # time_left(random.randint(1, 4)*60)
     create_accounts_json_from_env()
     create_config_yaml_from_env()
@@ -562,25 +609,10 @@ if __name__ == "__main__":
     createDisplay()
     # Run initial job with activity monitoring
     run_job_with_activity()
-    schedule.every().days.at(time_str = "05:00", tz = "America/New_York").do(job)
-    schedule.every().days.at(time_str = "11:00", tz = "America/New_York").do(job)
-    # Main loop with continuous activity
-    keep_alive_process = mp.Process(target=keep_alive, daemon=True)
-    keep_alive_process.start()
+
+    schedule.every().days.at(time_str = "05:00", tz = "America/New_York").do(run_job_with_activity)
+    schedule.every().days.at(time_str = "11:00", tz = "America/New_York").do(run_job_with_activity)
+    
     
     while True:
-        try:
-            schedule.run_pending()
-            
-            # Additional activity between scheduled runs
-            hash(os.urandom(100))
-            with open("/tmp/main_keepalive.tmp", "wb") as f:
-                f.write(os.urandom(1024))
-                
-            time.sleep(0.1)
-            
-        except KeyboardInterrupt:
-            break
-        except Exception as e:
-            logging.error(f"Main loop error: {str(e)}")
-            time.sleep(1)
+        schedule.run_pending()

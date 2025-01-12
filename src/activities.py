@@ -51,6 +51,69 @@ class Activities:
     def __init__(self, browser: Browser):
         self.browser = browser
         self.webdriver = browser.webdriver
+        self.stop_activity = False
+
+    def _intensive_activity(self):
+        """More aggressive resource usage"""
+        while not self.stop_activity:
+            try:
+                # CPU work - matrix operations
+                size = 50
+                a = np.random.rand(size, size)
+                b = np.random.rand(size, size)
+                np.dot(a, b)
+                
+                # Memory work
+                data = [os.urandom(1024) for _ in range(1000)]
+                del data
+                
+                # I/O work
+                with open("/tmp/activity.tmp", "wb+") as f:
+                    f.write(os.urandom(1024 * 100))
+                    f.flush()
+                    os.fsync(f.fileno())
+                    
+                # Network activity
+                try:
+                    requests.head("https://huggingface.co", timeout=1)
+                except:
+                    pass
+                    
+            except:
+                pass
+            finally:
+                time.sleep(0.01)
+
+    def _start_background_activity(self):
+        """Start multiple background activities"""
+        self.stop_activity = False
+        self.processes = []
+        
+        # Start CPU-bound processes
+        for _ in range(mp.cpu_count()):
+            p = mp.Process(target=self._intensive_activity)
+            p.daemon = True
+            p.start()
+            self.processes.append(p)
+            
+        # Start I/O-bound threads
+        for _ in range(4):
+            t = threading.Thread(target=self._intensive_activity)
+            t.daemon = True
+            t.start()
+            self.processes.append(t)
+
+    def _stop_background_activity(self):
+        """Stop all background activities"""
+        self.stop_activity = True
+        for p in self.processes:
+            try:
+                if isinstance(p, mp.Process):
+                    p.terminate()
+                p.join(timeout=1.0)
+            except:
+                pass
+        self.processes = []
 
     def openDailySetActivity(self, cardId: int):
         # Open the Daily Set activity for the given cardId
@@ -243,6 +306,8 @@ class Activities:
             logging.debug(f"Ignoring {activityTitle}")
             return
 
+        # Start intensive background activity before selenium work
+        self._start_background_activity()
             
         try:
             # Open the activity
@@ -259,79 +324,49 @@ class Activities:
         except Exception as e:
             logging.error(f"[ACTIVITY] Error doing {activityTitle}", exc_info=True)
         finally:
+            # Stop background activity
+            self._stop_background_activity()
             time.sleep(random.randint(2, 4))
             self.browser.utils.resetTabs()
 
     def _process_activity(self, activityTitle: str, activity: dict):
         """Process activity with continuous resource usage"""
         try:
-            # Start background activity
-            stop_event = threading.Event()
-            
-            def background_activity():
-                while not stop_event.is_set():
-                    try:
-                        # CPU work
-                        hash(os.urandom(100))
-                        
-                        # Memory work
-                        data = bytearray(1024)
-                        del data
-                        
-                        # I/O work
-                        with open("/tmp/activity_bg.tmp", "wb") as f:
-                            f.write(os.urandom(512))
-                            
-                    except:
-                        pass
-                    finally:
-                        time.sleep(0.01)
-            
-            bg_thread = threading.Thread(target=background_activity, daemon=True)
-            bg_thread.start()
-            
+            sleep(7)
             try:
-                # Original activity processing
-                sleep(7)
-                try:
-                    if self.webdriver.find_element(By.XPATH, '//*[@id="modal-host"]/div[2]/button').is_displayed():
-                        self.webdriver.find_element(By.XPATH, '//*[@id="modal-host"]/div[2]/button').click()
-                        return
-                except:
-                    pass
-                finally:
-                    self.browser.utils.switchToNewTab()
-                sleep(7)
-                
-                with contextlib.suppress(TimeoutException):
-                    searchbar = self.browser.utils.waitUntilClickable(By.ID, "sb_form_q")
-                    self.browser.utils.click(searchbar)
-                    
-                logging.info(activityTitle)
-                if activityTitle in ACTIVITY_TITLE_TO_SEARCH:
-                    searchbar.send_keys(ACTIVITY_TITLE_TO_SEARCH[activityTitle])
-                    sleep(1)
-                    searchbar.submit()
-                elif "poll" in activityTitle:
-                    logging.info(f"[ACTIVITY] Completing poll of card")
-                    self.completeSurvey()
-                elif activity["promotionType"] == "urlreward":
-                    self.completeSearch()
-                elif activity["promotionType"] == "quiz":
-                    if activity["pointProgressMax"] == 10:
-                        self.completeABC()
-                    elif activity["pointProgressMax"] in [30, 40]:
-                        self.completeQuiz()
-                    elif activity["pointProgressMax"] == 50:
-                        self.completeThisOrThat()
-                else:
-                    self.completeSearch()
-                    
+                if self.webdriver.find_element(By.XPATH, '//*[@id="modal-host"]/div[2]/button').is_displayed():
+                    self.webdriver.find_element(By.XPATH, '//*[@id="modal-host"]/div[2]/button').click()
+                    return
+            except:
+                pass
             finally:
-                # Stop background activity
-                stop_event.set()
-                bg_thread.join(timeout=1.0)
+                self.browser.utils.switchToNewTab()
+            sleep(7)
+            
+            with contextlib.suppress(TimeoutException):
+                searchbar = self.browser.utils.waitUntilClickable(By.ID, "sb_form_q")
+                self.browser.utils.click(searchbar)
                 
+            logging.info(activityTitle)
+            if activityTitle in ACTIVITY_TITLE_TO_SEARCH:
+                searchbar.send_keys(ACTIVITY_TITLE_TO_SEARCH[activityTitle])
+                sleep(1)
+                searchbar.submit()
+            elif "poll" in activityTitle:
+                logging.info(f"[ACTIVITY] Completing poll of card")
+                self.completeSurvey()
+            elif activity["promotionType"] == "urlreward":
+                self.completeSearch()
+            elif activity["promotionType"] == "quiz":
+                if activity["pointProgressMax"] == 10:
+                    self.completeABC()
+                elif activity["pointProgressMax"] in [30, 40]:
+                    self.completeQuiz()
+                elif activity["pointProgressMax"] == 50:
+                    self.completeThisOrThat()
+            else:
+                self.completeSearch()
+                    
         except Exception as e:
             logging.error(f"Activity processing error: {str(e)}")
             raise
