@@ -519,7 +519,7 @@ def run_job_with_activity():
     """Priority-based job execution"""
     try:
         # Set main process to high priority
-        os.nice(-15)
+        os.nice(-10)
         
         # Start keep-alive processes with high priority
         processes = []
