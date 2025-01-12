@@ -5,6 +5,7 @@ import os
 import requests
 import random
 import threading
+import concurrent.futures
 from random import randint
 from time import sleep
 
@@ -231,112 +232,81 @@ class Activities:
         try:
             activityTitle = cleanupActivityTitle(activity["title"])
             logging.debug(f"activityTitle={activityTitle}")
+            
             if activity["complete"] is True or activity["pointProgressMax"] == 0 or activity["exclusiveLockedFeatureStatus"] == "locked":
                 logging.debug("Already done, returning")
                 return
-            if activityTitle in CONFIG.get("apprise").get("notify").get(
-                "incomplete-activity"
-            ).get("ignore"):
+                
+            if activityTitle in CONFIG.get("apprise").get("notify").get("incomplete-activity").get("ignore"):
                 logging.debug(f"Ignoring {activityTitle}")
                 return
-            # Open the activity for the activity
-            cardId = activities.index(activity)
-            isDailySet = (
-                "daily_set_date" in activity["attributes"]
-                and activity["attributes"]["daily_set_date"]
-            )
-            if isDailySet:
-                self.openDailySetActivity(cardId)
-            else:
-                self.openMorePromotionsActivity(cardId)
-            self._process_activity_with_heartbeat(activityTitle, activity)
-        except Exception:
-            logging.error(f"[ACTIVITY] Error doing {activityTitle}", exc_info=True)
-        # todo Make configurable
-        sleep(randint(175, 300))
-        self.browser.utils.resetTabs()
 
-    def _process_activity_with_heartbeat(self, activityTitle: str, activity: dict):
-        """Process activity with multiple intensive heartbeats"""
-        try:
-            # Start multiple intensive threads
-            threads = []
-            
-            # CPU/Memory intensive thread
-            def cpu_intensive():
-                while True:
+            # Create a heartbeat event to track activity
+            heartbeat_active = threading.Event()
+            heartbeat_active.set()
+
+            def heartbeat():
+                while heartbeat_active.is_set():
                     try:
-                        # Matrix operations with larger matrices
-                        size = 500  # Increased size
-                        matrix = [[random.random() for _ in range(size)] 
-                                for _ in range(size)]
-                        for i in range(size):
-                            for j in range(size):
-                                matrix[i][j] = matrix[i][j] ** 2
+                        # Quick CPU work
+                        _ = [i * i for i in range(1000)]
                         
-                        # Memory churn with larger allocations
-                        data = [bytearray(4096) for _ in range(1000)]  # Increased size
-                        del data
-                    except:
-                        pass
-                    time.sleep(0.01)  # Shorter sleep
-            
-            # I/O intensive thread
-            def io_intensive():
-                while True:
-                    try:
-                        # Multiple file operations with larger data
-                        files = [f"/tmp/heartbeat_{i}" for i in range(10)]  # More files
-                        for file in files:
-                            with open(file, "ab+") as f:
-                                f.write(os.urandom(8192))  # Larger writes
-                                f.seek(0)
-                                f.truncate()
-                                f.flush()
-                                os.fsync(f.fileno())  # Force sync to disk
-                    except:
-                        pass
-                    time.sleep(0.01)
-            
-            # Network intensive thread
-            def network_intensive():
-                while True:
-                    try:
-                        urls = [
-                            "https://huggingface.co",
-                            "https://httpbin.org/get",
-                            "https://api.github.com",
-                            "https://www.google.com",
-                            "https://www.bing.com"
-                        ]
-                        for url in urls:
-                            try:
-                                requests.get(url, timeout=1)  # Changed to GET for more data
-                            except:
-                                continue
-                    except:
-                        pass
-                    time.sleep(0.05)
+                        # Small memory allocation
+                        _ = bytearray(1024)
                         
-            # Start more threads for each type
-            for _ in range(4):  # Increased thread count
-                threads.extend([
-                    threading.Thread(target=cpu_intensive, daemon=True),
-                    threading.Thread(target=io_intensive, daemon=True),
-                    threading.Thread(target=network_intensive, daemon=True)
-                ])
-            
-            for thread in threads:
+                        # Network ping
+                        try:
+                            requests.head("https://huggingface.co", timeout=0.5)
+                        except:
+                            pass
+                            
+                    except Exception as e:
+                        logging.debug(f"Heartbeat error: {str(e)}")
+                    finally:
+                        time.sleep(0.1)
+
+            # Start heartbeat threads
+            heartbeat_threads = []
+            for _ in range(5):  # Multiple heartbeat threads
+                thread = threading.Thread(target=heartbeat, daemon=True)
                 thread.start()
-                    
-            # Process the actual activity
-            self._process_activity(activityTitle, activity)
+                heartbeat_threads.append(thread)
+
+            try:
+                # Open the activity
+                cardId = activities.index(activity)
+                isDailySet = ("daily_set_date" in activity["attributes"] and activity["attributes"]["daily_set_date"])
                 
+                if isDailySet:
+                    self.openDailySetActivity(cardId)
+                else:
+                    self.openMorePromotionsActivity(cardId)
+
+                # Process the activity with timeout
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(self._process_activity, activityTitle, activity)
+                    try:
+                        future.result(timeout=300)  # 5 minute timeout
+                    except concurrent.futures.TimeoutError:
+                        logging.warning(f"Activity timed out: {activityTitle}")
+                        
+            finally:
+                # Clean up heartbeat threads
+                heartbeat_active.clear()
+                for thread in heartbeat_threads:
+                    thread.join(timeout=1.0)
+
+            # Sleep with active heartbeat
+            time.sleep(random.randint(3, 5))
+            
         except Exception as e:
-            logging.info(f"Activity status: {activityTitle}")
+            logging.error(f"[ACTIVITY] Error doing {activityTitle}", exc_info=True)
+        finally:
+            time.sleep(random.randint(2, 4))
+            self.browser.utils.resetTabs()
 
     def _process_activity(self, activityTitle: str, activity: dict):
-        # Original activity processing
+        """Process a single activity"""
         sleep(7)
         try:
             if self.webdriver.find_element(By.XPATH, '//*[@id="modal-host"]/div[2]/button').is_displayed():
@@ -346,6 +316,7 @@ class Activities:
             pass
         finally:
             self.browser.utils.switchToNewTab()
+            
         sleep(7)
         
         with contextlib.suppress(TimeoutException):

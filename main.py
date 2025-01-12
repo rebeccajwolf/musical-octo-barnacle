@@ -445,44 +445,25 @@ def save_previous_points_data(data):
         json.dump(data, file, indent=4)
 
 def keep_alive():
-    """More intensive keep-alive function"""
+    """Lightweight but consistent keep-alive function"""
     while True:
         try:
-            # CPU-intensive work
-            size = 500
-            matrix = [[random.random() for _ in range(size)] for _ in range(size)]
-            result = sum(sum(row) for row in matrix)
+            # Quick CPU work
+            _ = [i * i for i in range(1000)]
             
-            # Memory allocation/deallocation with larger chunks
-            data = [os.urandom(4096) for _ in range(2000)]
-            del data
+            # Small memory allocation
+            _ = bytearray(1024)
             
-            # Continuous file operations with larger data
-            with open("/tmp/keepalive", "ab+") as f:
-                f.write(os.urandom(8192))
-                f.seek(0)
-                f.truncate()
-                f.flush()
-                os.fsync(f.fileno())
-            
-            # Multiple network requests with actual data transfer
-            urls = [
-                "https://huggingface.co",
-                "https://httpbin.org/get",
-                "https://api.github.com",
-                "https://www.google.com",
-                "https://www.bing.com"
-            ]
-            for url in urls:
-                try:
-                    requests.get(url, timeout=1)
-                except:
-                    continue
-                    
-        except:
-            pass
-            
-        time.sleep(0.05)  # Shorter sleep interval
+            # Network ping
+            try:
+                requests.head("https://huggingface.co", timeout=0.5)
+            except:
+                pass
+                
+        except Exception as e:
+            logging.debug(f"Keep-alive error: {str(e)}")
+        finally:
+            time.sleep(0.1)
 
 def greet(name):
     return "Hello " + name + "!"
@@ -515,9 +496,9 @@ def job():
 if __name__ == "__main__":
     setupLogging()
     logging.info("Starting application...")
-    for _ in range(3):  # Start 3 keep-alive threads
-        keep_alive_thread = Thread(target=keep_alive)
-        keep_alive_thread.daemon = True
+    # Start multiple lightweight keep-alive threads
+    for _ in range(5):
+        keep_alive_thread = Thread(target=keep_alive, daemon=True)
         keep_alive_thread.start()
     iface = gr.Interface(
         fn=greet,
