@@ -139,10 +139,10 @@ class Browser:
                     "userAgentMetadata": self.userAgentMetadata,
                 },
             ),
-            (
-                "Page.addScriptToEvaluateOnNewDocument",
-                {"source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"},
-            )
+            # (
+            #     "Page.addScriptToEvaluateOnNewDocument",
+            #     {"source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"},
+            # )
         ]
 
         for command, params in cdp_commands:
