@@ -449,38 +449,34 @@ def save_previous_points_data(data):
         json.dump(data, file, indent=4)
 
 def keep_alive():
-    """Resource-intensive keep-alive function"""
-    process = psutil.Process(os.getpid())
-    process.nice(10)  # Set high priority
-    
+    """Aggressive resource-intensive keep-alive function"""
     while True:
         try:
-            # CPU work
-            size = 200
-            a = np.random.rand(size, size)
-            b = np.random.rand(size, size)
-            c = np.dot(a, b)
+            # CPU-intensive operations
+            for _ in range(10000):
+                hash(os.urandom(100))
             
-            # Memory work
-            data = [bytearray(1024) for _ in range(100)]
+            # Memory operations    
+            data = [bytearray(1024) for _ in range(1000)]
             del data
             
-            # I/O work
-            with open("/tmp/keepalive.log", "ab+") as f:
-                f.write(os.urandom(1024))
-                f.flush()
-                os.fsync(f.fileno())
-            
-            # Network work
+            # I/O operations
+            for i in range(5):
+                with open(f"/tmp/keepalive_{i}.tmp", "wb+") as f:
+                    f.write(os.urandom(1024 * 10))
+                    f.flush()
+                    os.fsync(f.fileno())
+                
+            # Network activity
             try:
-                requests.head("https://huggingface.co", timeout=0.5)
+                requests.head("https://huggingface.co", timeout=1)
             except:
                 pass
                 
-        except Exception as e:
-            logging.debug(f"Keep-alive error: {str(e)}")
+        except:
+            pass
         finally:
-            time.sleep(0.01)  # Very short sleep
+            time.sleep(0.01)
 
 def greet(name):
     return "Hello " + name + "!"
@@ -499,39 +495,63 @@ def createDisplay():
     except Exception as exc:  # skipcq
         logging.error(exc, exc_info=True)
 
-def job():
-    # subprocess.call(['sh', './clean_mem.sh'])
-    # time_left(random.randint(1, 4)*60)
+# def job():
+#     # subprocess.call(['sh', './clean_mem.sh'])
+#     # time_left(random.randint(1, 4)*60)
+#     try:
+#         main()
+#     except Exception as e:
+#         logging.exception("")
+#         sendNotification(
+#             "⚠️ Error occurred, please check the log", traceback.format_exc(), e
+#         )
+
+def run_job_with_activity():
+    """Run job with continuous activity monitoring"""
     try:
+        # Start multiple keep-alive processes
+        processes = []
+        for _ in range(mp.cpu_count()):
+            p = mp.Process(target=keep_alive, daemon=True)
+            p.start()
+            processes.append(p)
+            
+        # Run the actual job
         main()
+        
     except Exception as e:
         logging.exception("")
         sendNotification(
-            "⚠️ Error occurred, please check the log", traceback.format_exc(), e
+            "⚠️ Error occurred, please check the log", 
+            traceback.format_exc(),
+            e
         )
+    finally:
+        # Clean up processes
+        for p in processes:
+            try:
+                p.terminate()
+                p.join(timeout=1.0)
+            except:
+                pass
 
 if __name__ == "__main__":
     setupLogging()
     logging.info("Starting application...")
-    # Set main process priority
-    process = psutil.Process(os.getpid())
-    process.nice(10)
-    
-    # Start multiple resource-intensive processes
-    num_cpus = mp.cpu_count()
-    for _ in range(num_cpus):
-        keep_alive_process = mp.Process(target=keep_alive, daemon=True)
-        keep_alive_process.start()
+    # Start Gradio interface
     iface = gr.Interface(
-        fn=greet,
-        inputs="text",
+        fn=lambda: "Application is running",
+        inputs=None,
         outputs="text",
-        title="App is Running...",
-        description="This space stays active while running"
+        title="App Status",
+        description="Monitoring application status"
     )
-
-    # Launch the interface in a separate thread
-    interface_thread = Thread(target=lambda: iface.launch(server_name="0.0.0.0", server_port=7860))
+    
+    interface_thread = Thread(target=lambda: iface.launch(
+        server_name="0.0.0.0", 
+        server_port=7860,
+        prevent_thread_lock=True
+    ))
     interface_thread.daemon = True
     interface_thread.start()
     # time_left(random.randint(1, 4)*60)
@@ -540,8 +560,27 @@ if __name__ == "__main__":
     downloadWebDriver()
     # downloadWebDriverv2()
     createDisplay()
-    job()
+    # Run initial job with activity monitoring
+    run_job_with_activity()
     schedule.every().days.at(time_str = "05:00", tz = "America/New_York").do(job)
     schedule.every().days.at(time_str = "11:00", tz = "America/New_York").do(job)
+    # Main loop with continuous activity
+    keep_alive_process = mp.Process(target=keep_alive, daemon=True)
+    keep_alive_process.start()
+    
     while True:
-        schedule.run_pending()
+        try:
+            schedule.run_pending()
+            
+            # Additional activity between scheduled runs
+            hash(os.urandom(100))
+            with open("/tmp/main_keepalive.tmp", "wb") as f:
+                f.write(os.urandom(1024))
+                
+            time.sleep(0.1)
+            
+        except KeyboardInterrupt:
+            break
+        except Exception as e:
+            logging.error(f"Main loop error: {str(e)}")
+            time.sleep(1)
