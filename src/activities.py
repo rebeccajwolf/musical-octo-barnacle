@@ -289,7 +289,7 @@ class Activities:
                 self.completeSearch()
                 
             # Break up long sleep into smaller chunks with heartbeat
-            total_sleep = random.randint(60, 180)  # 1-3 minutes total
+            total_sleep = randint(60, 180)  # 1-3 minutes total
             chunk_size = 30  # 30 seconds per chunk
             
             for _ in range(0, total_sleep, chunk_size):
