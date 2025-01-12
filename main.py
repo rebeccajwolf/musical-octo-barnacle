@@ -449,18 +449,28 @@ def keep_alive():
     while True:
         try:
             # Log activity
-            logging.info("Space is active: " + time.strftime("%Y-%m-%d %H:%M:%S"))
+            current_time = time.strftime("%Y-%m-%d %H:%M:%S")
+            logging.info(f"Space is active: {current_time}")
             
-            # Make multiple requests to different endpoints to ensure activity
+            # Multiple requests to different endpoints
             requests.get("http://127.0.0.1:7860/", timeout=5)
             requests.post("http://127.0.0.1:7860/api/predict", json={"data": ["keepalive"]}, timeout=5)
             
-            # Touch a file to show filesystem activity
-            Path("/tmp/keepalive").touch()
+            # CPU activity simulation
+            for _ in range(1000):
+                _ = random.random() * random.random()
+            
+            # File system activity
+            timestamp = str(time.time())
+            with open("/tmp/keepalive", "w") as f:
+                f.write(timestamp)
+            
+            # Network activity simulation
+            requests.head("https://huggingface.co", timeout=5)
             
         except Exception as e:
             logging.warning(f"Keep-alive check failed: {str(e)}")
-        time.sleep(15)  # Check every 15 seconds
+        time.sleep(5)  # Reduced from 15 to 5 seconds
 
 def greet(name):
     return "Hello " + name + "!"

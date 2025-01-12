@@ -253,7 +253,7 @@ class Activities:
     def _process_activity_with_heartbeat(self, activityTitle: str, activity: dict):
         """Process activity while maintaining heartbeat"""
         try:
-            sleep(5)  # Reduced from 10
+            sleep(3)  # Reduced from 5
             try:
                 if self.webdriver.find_element(By.XPATH, '//*[@id="modal-host"]/div[2]/button').is_displayed():
                     self.webdriver.find_element(By.XPATH, '//*[@id="modal-host"]/div[2]/button').click()
@@ -262,7 +262,7 @@ class Activities:
                     self.browser.utils.switchToNewTab()
             except:
                 pass
-            sleep(5)  # Reduced from 7
+            sleep(3)  # Reduced from 5
             
             with contextlib.suppress(TimeoutException):
                 searchbar = self.browser.utils.waitUntilClickable(By.ID, "sb_form_q")
@@ -271,7 +271,7 @@ class Activities:
             logging.info(activityTitle)
             if activityTitle in ACTIVITY_TITLE_TO_SEARCH:
                 searchbar.send_keys(ACTIVITY_TITLE_TO_SEARCH[activityTitle])
-                sleep(2)
+                sleep(1)  # Reduced from 2
                 searchbar.submit()
             elif "poll" in activityTitle:
                 logging.info(f"[ACTIVITY] Completing poll of card")
@@ -288,20 +288,36 @@ class Activities:
             else:
                 self.completeSearch()
                 
-            # Break up long sleep into smaller chunks with more frequent heartbeat
-            total_sleep = randint(30, 90)  # Reduced from 60-180 to 30-90 seconds
-            chunk_size = 15  # Reduced from 30 to 15 seconds
+            # More frequent heartbeats with shorter intervals
+            total_sleep = randint(20, 45)  # Reduced from 30-90 to 20-45 seconds
+            chunk_size = 5  # Reduced from 15 to 5 seconds
             
             for _ in range(0, total_sleep, chunk_size):
-                # Perform multiple actions to keep session alive
                 try:
+                    # Multiple activity simulations
                     # Scroll action
-                    self.webdriver.execute_script("window.scrollBy(0, 10);")
-                    # Move mouse
+                    self.webdriver.execute_script("window.scrollBy(0, Math.random()*20);")
+                    
+                    # Mouse movement
                     self.webdriver.execute_script(
                         "document.body.dispatchEvent(new MouseEvent('mousemove', {clientX: Math.random()*500, clientY: Math.random()*500}));"
                     )
-                    logging.debug("Heartbeat: Activity simulation")
+                    
+                    # Click simulation
+                    self.webdriver.execute_script(
+                        "document.body.dispatchEvent(new MouseEvent('click', {clientX: Math.random()*500, clientY: Math.random()*500}));"
+                    )
+                    
+                    # Keyboard event simulation
+                    self.webdriver.execute_script(
+                        "document.body.dispatchEvent(new KeyboardEvent('keypress', {'key': 'Tab'}));"
+                    )
+                    
+                    # CPU activity
+                    for _ in range(100):
+                        _ = random.random() * random.random()
+                    
+                    logging.debug("Heartbeat: Multiple activity simulations")
                 except:
                     pass
                 sleep(chunk_size)
