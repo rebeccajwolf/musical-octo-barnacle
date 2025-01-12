@@ -258,10 +258,10 @@ class Activities:
                 if self.webdriver.find_element(By.XPATH, '//*[@id="modal-host"]/div[2]/button').is_displayed():
                     self.webdriver.find_element(By.XPATH, '//*[@id="modal-host"]/div[2]/button').click()
                     return
-                else:
-                    self.browser.utils.switchToNewTab()
             except:
                 pass
+            finally:
+                self.browser.utils.switchToNewTab()
             sleep(3)  # Reduced from 5
             
             with contextlib.suppress(TimeoutException):
