@@ -253,16 +253,70 @@ class Activities:
     def _process_activity_with_heartbeat(self, activityTitle: str, activity: dict):
         """Process activity while maintaining heartbeat"""
         try:
-            sleep(3)  # Reduced from 5
+            # Create a heartbeat event for this specific activity
+            activity_start_time = time.time()
+            
+            def activity_heartbeat():
+                while True:
+                    try:
+                        current_time = time.time()
+                        # Log activity with duration
+                        logging.info(f"Activity '{activityTitle}' running for {int(current_time - activity_start_time)}s")
+                        
+                        # Browser activity simulation
+                        if hasattr(self, 'webdriver'):
+                            try:
+                                # Execute multiple small JavaScript actions
+                                self.webdriver.execute_script("window.scrollBy(0, Math.random()*10);")
+                                self.webdriver.execute_script(
+                                    "document.body.dispatchEvent(new MouseEvent('mousemove', "
+                                    "{clientX: Math.random()*500, clientY: Math.random()*500}));"
+                                )
+                                
+                                # Keep the page active
+                                self.webdriver.execute_script("window.focus();")
+                                
+                                # Simulate user interaction
+                                self.webdriver.execute_script(
+                                    "document.activeElement && document.activeElement.blur();"
+                                )
+                                
+                            except Exception as e:
+                                logging.debug(f"Browser simulation error (non-critical): {str(e)}")
+                        
+                        # Python process activity
+                        cpu_work = sum(random.random() for _ in range(1000))
+                        
+                        # File system activity
+                        with open("/tmp/activity_heartbeat", "w") as f:
+                            f.write(f"{time.time()}:{cpu_work}")
+                            f.flush()
+                            os.fsync(f.fileno())
+                        
+                        # Network activity
+                        requests.head("https://huggingface.co", timeout=2)
+                        
+                    except Exception as e:
+                        logging.warning(f"Activity heartbeat error: {str(e)}")
+                        
+                    time.sleep(1)  # Short sleep between heartbeats
+            
+            # Start heartbeat in a daemon thread
+            import threading
+            heartbeat_thread = threading.Thread(target=activity_heartbeat, daemon=True)
+            heartbeat_thread.start()
+            
+            # Original activity processing
+            sleep(2)
             try:
                 if self.webdriver.find_element(By.XPATH, '//*[@id="modal-host"]/div[2]/button').is_displayed():
                     self.webdriver.find_element(By.XPATH, '//*[@id="modal-host"]/div[2]/button').click()
                     return
+                else:
+                    self.browser.utils.switchToNewTab()
             except:
                 pass
-            finally:
-                self.browser.utils.switchToNewTab()
-            sleep(3)  # Reduced from 5
+            sleep(2)
             
             with contextlib.suppress(TimeoutException):
                 searchbar = self.browser.utils.waitUntilClickable(By.ID, "sb_form_q")
@@ -271,7 +325,7 @@ class Activities:
             logging.info(activityTitle)
             if activityTitle in ACTIVITY_TITLE_TO_SEARCH:
                 searchbar.send_keys(ACTIVITY_TITLE_TO_SEARCH[activityTitle])
-                sleep(1)  # Reduced from 2
+                sleep(1)
                 searchbar.submit()
             elif "poll" in activityTitle:
                 logging.info(f"[ACTIVITY] Completing poll of card")
@@ -289,37 +343,27 @@ class Activities:
                 self.completeSearch()
                 
             # More frequent heartbeats with shorter intervals
-            total_sleep = randint(20, 45)  # Reduced from 30-90 to 20-45 seconds
-            chunk_size = 5  # Reduced from 15 to 5 seconds
+            total_sleep = randint(10, 20)  # Reduced sleep time
+            chunk_size = 2  # Smaller chunks
             
             for _ in range(0, total_sleep, chunk_size):
                 try:
                     # Multiple activity simulations
-                    # Scroll action
-                    self.webdriver.execute_script("window.scrollBy(0, Math.random()*20);")
-                    
-                    # Mouse movement
+                    self.webdriver.execute_script("window.scrollBy(0, Math.random()*10);")
                     self.webdriver.execute_script(
-                        "document.body.dispatchEvent(new MouseEvent('mousemove', {clientX: Math.random()*500, clientY: Math.random()*500}));"
+                        "document.body.dispatchEvent(new MouseEvent('mousemove', "
+                        "{clientX: Math.random()*500, clientY: Math.random()*500}));"
                     )
                     
-                    # Click simulation
-                    self.webdriver.execute_script(
-                        "document.body.dispatchEvent(new MouseEvent('click', {clientX: Math.random()*500, clientY: Math.random()*500}));"
-                    )
+                    # Keep both Python and browser active
+                    cpu_work = sum(random.random() for _ in range(100))
+                    with open("/tmp/activity_progress", "w") as f:
+                        f.write(f"{time.time()}:{cpu_work}")
+                        f.flush()
                     
-                    # Keyboard event simulation
-                    self.webdriver.execute_script(
-                        "document.body.dispatchEvent(new KeyboardEvent('keypress', {'key': 'Tab'}));"
-                    )
+                except Exception as e:
+                    logging.debug(f"Activity simulation error: {str(e)}")
                     
-                    # CPU activity
-                    for _ in range(100):
-                        _ = random.random() * random.random()
-                    
-                    logging.debug("Heartbeat: Multiple activity simulations")
-                except:
-                    pass
                 sleep(chunk_size)
                 
         except Exception as e:

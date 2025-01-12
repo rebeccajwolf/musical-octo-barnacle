@@ -448,36 +448,22 @@ def keep_alive():
     """Keep-alive function that runs in a separate thread"""
     while True:
         try:
-            # Python process activity
-            for _ in range(10000):  # Increased computation
-                _ = sum([random.random() for _ in range(100)])
+            # Only perform lightweight checks since heartbeat thread handles intensive operations
+            logging.info("Main process active: " + time.strftime("%Y-%m-%d %H:%M:%S"))
             
-            # File I/O activity
-            with open("/tmp/keepalive", "w") as f:
-                f.write(str(time.time()))
-                f.flush()  # Force write to disk
-                os.fsync(f.fileno())  # Ensure it's written
-                
-            # Multiple network requests with Python
-            for _ in range(3):
-                requests.get("http://127.0.0.1:7860/", timeout=5)
-                requests.post("http://127.0.0.1:7860/api/predict", 
-                            json={"data": [str(random.random())]}, 
-                            timeout=5)
-                requests.head("https://huggingface.co", timeout=5)
+            # Quick process activity check
+            cpu_work = sum(random.random() for _ in range(100))
             
-            # System calls to show process activity
-            os.getpid()
-            os.getcwd()
-            os.listdir()
+            # Minimal file touch
+            Path("/tmp/keepalive").touch()
             
-            # Log with timestamp
-            logging.info(f"Python process active: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+            # Single lightweight request
+            requests.head("https://huggingface.co", timeout=2)
             
         except Exception as e:
             logging.warning(f"Keep-alive check failed: {str(e)}")
-            
-        time.sleep(2)  # Reduced to 2 seconds
+        
+        time.sleep(30)  # Longer sleep since heartbeat thread handles frequent updates
 
 def greet(name):
     return "Hello " + name + "!"
