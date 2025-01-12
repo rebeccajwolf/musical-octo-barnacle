@@ -448,29 +448,36 @@ def keep_alive():
     """Keep-alive function that runs in a separate thread"""
     while True:
         try:
-            # Log activity
-            current_time = time.strftime("%Y-%m-%d %H:%M:%S")
-            logging.info(f"Space is active: {current_time}")
+            # Python process activity
+            for _ in range(10000):  # Increased computation
+                _ = sum([random.random() for _ in range(100)])
             
-            # Multiple requests to different endpoints
-            requests.get("http://127.0.0.1:7860/", timeout=5)
-            requests.post("http://127.0.0.1:7860/api/predict", json={"data": ["keepalive"]}, timeout=5)
-            
-            # CPU activity simulation
-            for _ in range(1000):
-                _ = random.random() * random.random()
-            
-            # File system activity
-            timestamp = str(time.time())
+            # File I/O activity
             with open("/tmp/keepalive", "w") as f:
-                f.write(timestamp)
+                f.write(str(time.time()))
+                f.flush()  # Force write to disk
+                os.fsync(f.fileno())  # Ensure it's written
+                
+            # Multiple network requests with Python
+            for _ in range(3):
+                requests.get("http://127.0.0.1:7860/", timeout=5)
+                requests.post("http://127.0.0.1:7860/api/predict", 
+                            json={"data": [str(random.random())]}, 
+                            timeout=5)
+                requests.head("https://huggingface.co", timeout=5)
             
-            # Network activity simulation
-            requests.head("https://huggingface.co", timeout=5)
+            # System calls to show process activity
+            os.getpid()
+            os.getcwd()
+            os.listdir()
+            
+            # Log with timestamp
+            logging.info(f"Python process active: {time.strftime('%Y-%m-%d %H:%M:%S')}")
             
         except Exception as e:
             logging.warning(f"Keep-alive check failed: {str(e)}")
-        time.sleep(5)  # Reduced from 15 to 5 seconds
+            
+        time.sleep(2)  # Reduced to 2 seconds
 
 def greet(name):
     return "Hello " + name + "!"
@@ -519,7 +526,7 @@ if __name__ == "__main__":
     interface_thread = Thread(target=lambda: iface.launch(server_name="0.0.0.0", server_port=7860))
     interface_thread.daemon = True
     interface_thread.start()
-    time_left(random.randint(1, 4)*60)
+    # time_left(random.randint(1, 4)*60)
     create_accounts_json_from_env()
     create_config_yaml_from_env()
     downloadWebDriver()
