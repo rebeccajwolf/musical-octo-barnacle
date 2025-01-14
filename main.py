@@ -29,7 +29,10 @@ import wget
 import zipfile
 from queue import Queue
 import signal
+import ctypes
+from contextlib import contextmanager
 
+# Import your existing modules
 from src import (
     Browser,
     Login,
@@ -46,6 +49,88 @@ from src.utils import Utils, CONFIG, sendNotification, getProjectRoot, formatNum
 # Global event for coordinating shutdown
 shutdown_event = Event()
 activity_queue = Queue()
+
+class SystemMonitor:
+    def __init__(self):
+        self.last_activity = time.time()
+        self.lock = threading.Lock()
+        self.active = True
+        self._stop_event = threading.Event()
+        
+    def start(self):
+        self.monitor_thread = threading.Thread(target=self._monitor_loop, daemon=True)
+        self.monitor_thread.start()
+        
+    def stop(self):
+        self._stop_event.set()
+        
+    def _monitor_loop(self):
+        while not self._stop_event.is_set():
+            try:
+                # Force CPU activity
+                self._force_cpu_activity()
+                # Force memory allocation
+                self._force_memory_activity()
+                # Force disk I/O
+                self._force_io_activity()
+                # Network activity
+                self._force_network_activity()
+                
+                time.sleep(0.1)  # Short sleep to prevent CPU overload
+            except Exception as e:
+                logging.error(f"Monitor error: {str(e)}")
+                
+    def _force_cpu_activity(self):
+        # Matrix operations to keep CPU active
+        size = 100
+        a = np.random.rand(size, size)
+        np.linalg.svd(a)
+        
+    def _force_memory_activity(self):
+        # Allocate and deallocate memory
+        data = [os.urandom(1024) for _ in range(100)]
+        del data
+        
+    def _force_io_activity(self):
+        # Perform disk I/O
+        with open("/tmp/activity.tmp", "wb") as f:
+            f.write(os.urandom(1024))
+            f.flush()
+            os.fsync(f.fileno())
+            
+    def _force_network_activity(self):
+        try:
+            requests.head("https://huggingface.co", timeout=1)
+        except:
+            pass
+
+class ProcessPriorityManager:
+    def __init__(self):
+        self.libc = ctypes.CDLL('libc.so.6')
+        
+    @contextmanager
+    def elevated_priority(self):
+        try:
+            # Try to set real-time priority using libc
+            self.libc.nice(-20)
+        except:
+            try:
+                # Fallback to regular nice value
+                os.nice(-10)
+            except:
+                logging.warning("Could not set process priority, continuing with default")
+        yield
+        try:
+            # Reset priority
+            os.nice(0)
+        except:
+            pass
+
+def ensure_container_activity():
+    """Ensures continuous system activity"""
+    monitor = SystemMonitor()
+    monitor.start()
+    return monitor
 
 class ActivityMonitor:
     def __init__(self):
@@ -66,13 +151,13 @@ class ActivityMonitor:
     def increase_activity(self):
         with self.lock:
             self.matrix_size += 50
-            if self.matrix_size > 500:  # Cap matrix size
+            if self.matrix_size > 500:
                 self.matrix_size = 500
                 
     def decrease_activity(self):
         with self.lock:
             self.matrix_size -= 50
-            if self.matrix_size < 100:  # Minimum matrix size
+            if self.matrix_size < 100:
                 self.matrix_size = 100
                 
     def get_matrix_size(self):
@@ -287,97 +372,31 @@ def main():
 def run_job_with_activity():
     """Priority-based job execution with continuous system activity"""
     try:
-        # Set Python process priority to maximum
-        try:
-            os.setpriority(os.PRIO_PROCESS, 0, -20)  # Highest priority
-        except Exception as e:
-            logging.warning(f"Could not set process priority: {str(e)}")
+        # Initialize process priority manager
+        priority_manager = ProcessPriorityManager()
         
-        # Start activity coordinator in a separate thread
-        coordinator_thread = threading.Thread(target=activity_coordinator, daemon=True)
-        coordinator_thread.start()
+        # Start system monitor
+        system_monitor = ensure_container_activity()
         
-        # Start CPU-intensive processes
-        processes = []
-        
-        # One process per CPU core for continuous activity
-        cpu_count = mp.cpu_count()
-        for _ in range(max(1, cpu_count - 1)):  # Leave one core for main process
-            p = mp.Process(target=continuous_cpu_load, daemon=True)
-            p.start()
-            processes.append(p)
+        with priority_manager.elevated_priority():
+            # Start activity coordinator in a separate thread
+            coordinator_thread = threading.Thread(target=activity_coordinator, daemon=True)
+            coordinator_thread.start()
             
-        # Start memory and I/O activity processes
-        memory_proc = mp.Process(target=memory_activity, daemon=True)
-        memory_proc.start()
-        processes.append(memory_proc)
-        
-        io_proc = mp.Process(target=io_activity, daemon=True)
-        io_proc.start()
-        processes.append(io_proc)
-        
-        # Monitor and adjust process priorities
-        def priority_monitor():
-            while not shutdown_event.is_set():
-                try:
-                    # Get all Python processes
-                    python_procs = [p for p in psutil.process_iter(['name', 'pid', 'cpu_percent']) 
-                                  if 'python' in p.info['name'].lower()]
-                    
-                    # Sort processes by CPU usage
-                    python_procs.sort(key=lambda x: x.info['cpu_percent'], reverse=True)
-                    
-                    # Ensure main Python process has highest priority
-                    main_pid = os.getpid()
-                    for proc in python_procs:
-                        try:
-                            if proc.info['pid'] == main_pid:
-                                proc.nice(-20)  # Highest priority for main process
-                            else:
-                                proc.nice(-10)  # Lower priority for other Python processes
-                        except:
-                            pass
-                            
-                    # Monitor system resources
-                    cpu_percent = psutil.cpu_percent()
-                    mem_percent = psutil.virtual_memory().percent
-                    
-                    # Adjust activity based on resource usage
-                    if cpu_percent < 30:
-                        activity_queue.put(('increase_cpu', None))
-                    if mem_percent < 40:
-                        activity_queue.put(('increase_memory', None))
-                        
-                except Exception as e:
-                    logging.error(f"Monitor error: {str(e)}")
-                finally:
-                    time.sleep(0.1)
-                    
-        monitor_thread = threading.Thread(target=priority_monitor, daemon=True)
-        monitor_thread.start()
+            # Run main job
+            main()
             
-        # Run main job
-        main()
-        
     except Exception as e:
         logging.exception("Job execution error")
         sendNotification(
-            "⚠️ Error occurred, please check the log", 
+            "⚠️ Error occurred, please check the log",
             traceback.format_exc(),
             e
         )
     finally:
-        # Cleanup processes
-        for p in processes:
-            try:
-                p.terminate()
-                p.join(timeout=1.0)
-            except:
-                pass
-        
-        # Signal shutdown
+        # Cleanup and stop monitoring
+        system_monitor.stop()
         shutdown_event.set()
-
 
 def create_accounts_json_from_env():
     """Creates accounts.json file from ACCOUNTS environment variable.
@@ -429,12 +448,6 @@ def create_config_yaml_from_env():
 
 def downloadWebDriver():
     # get the latest chrome driver version number
-    # url = 'https://chromedriver.storage.googleapis.com/LATEST_RELEASE'
-    # response = requests.get(url)
-    # version_number = response.text
-
-    # build the donwload url
-    # download_url = "https://chromedriver.storage.googleapis.com/" + version_number +"/chromedriver_linux64.zip"
     download_url = "https://storage.googleapis.com/chrome-for-testing-public/128.0.6613.119/linux64/chromedriver-linux64.zip"
     # download the zip file using the url built above
     latest_driver_zip = wget.download(download_url,'chromedriver.zip')
@@ -732,7 +745,7 @@ if __name__ == "__main__":
     )
     
     interface_thread = Thread(target=lambda: iface.launch(
-        server_name="0.0.0.0", 
+        server_name="0.0.0.0",
         server_port=7860,
         prevent_thread_lock=True
     ))
@@ -743,6 +756,9 @@ if __name__ == "__main__":
     create_config_yaml_from_env()
     downloadWebDriver()
     createDisplay()
+    
+    # Initialize system monitor before running jobs
+    system_monitor = ensure_container_activity()
     
     # Run initial job with activity monitoring
     run_job_with_activity()
@@ -758,4 +774,5 @@ if __name__ == "__main__":
             activity_monitor.update_activity()
     except KeyboardInterrupt:
         logging.info("Shutting down...")
+        system_monitor.stop()
         shutdown_event.set()
