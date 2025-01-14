@@ -32,7 +32,6 @@ import signal
 import ctypes
 from contextlib import contextmanager
 
-# Import your existing modules
 from src import (
     Browser,
     Login,
@@ -50,293 +49,136 @@ from src.utils import Utils, CONFIG, sendNotification, getProjectRoot, formatNum
 shutdown_event = Event()
 activity_queue = Queue()
 
-class SystemMonitor:
+class ContainerKeepAlive:
     def __init__(self):
-        self.last_activity = time.time()
-        self.lock = threading.Lock()
         self.active = True
         self._stop_event = threading.Event()
+        self.heartbeat_interval = 30
+        self._process_priority_set = False
         
     def start(self):
-        self.monitor_thread = threading.Thread(target=self._monitor_loop, daemon=True)
-        self.monitor_thread.start()
+        self.thread = threading.Thread(target=self._heartbeat_loop, daemon=True)
+        self.thread.start()
         
     def stop(self):
         self._stop_event.set()
+        if hasattr(self, 'thread'):
+            self.thread.join(timeout=5)
         
-    def _monitor_loop(self):
+    def _set_process_priority(self):
+        if not self._process_priority_set:
+            try:
+                # Try to set process priority using different methods
+                if hasattr(os, 'nice'):
+                    os.nice(0)  # Reset to normal priority first
+                elif sys.platform == 'win32':
+                    import win32api, win32process, win32con
+                    handle = win32api.GetCurrentProcess()
+                    win32process.SetPriorityClass(handle, win32process.NORMAL_PRIORITY_CLASS)
+                self._process_priority_set = True
+            except Exception as e:
+                logging.warning(f"Priority setting attempt: {str(e)}")
+        
+    def _heartbeat_loop(self):
+        self._set_process_priority()
         while not self._stop_event.is_set():
             try:
-                # Force CPU activity
-                self._force_cpu_activity()
-                # Force memory allocation
-                self._force_memory_activity()
-                # Force disk I/O
-                self._force_io_activity()
+                # CPU activity
+                _ = [i * i for i in range(1000)]
+                
+                # File I/O activity
+                heartbeat_file = Path("/tmp/heartbeat")
+                heartbeat_file.touch(exist_ok=True)
+                
+                # Memory activity
+                temp_array = np.zeros((100, 100), dtype=np.float32)
+                del temp_array
+                
                 # Network activity
-                self._force_network_activity()
+                try:
+                    requests.head("https://huggingface.co", timeout=1)
+                except:
+                    pass
                 
-                time.sleep(0.1)  # Short sleep to prevent CPU overload
+                # Update Gradio status
+                self._update_gradio_status()
+                
+                # Sleep with interruption check
+                for _ in range(int(self.heartbeat_interval)):
+                    if self._stop_event.is_set():
+                        break
+                    time.sleep(1)
+                    
             except Exception as e:
-                logging.error(f"Monitor error: {str(e)}")
+                logging.error(f"Heartbeat error: {str(e)}")
+                time.sleep(5)
                 
-    def _force_cpu_activity(self):
-        # Matrix operations to keep CPU active
-        size = 100
-        a = np.random.rand(size, size)
-        np.linalg.svd(a)
-        
-    def _force_memory_activity(self):
-        # Allocate and deallocate memory
-        data = [os.urandom(1024) for _ in range(100)]
-        del data
-        
-    def _force_io_activity(self):
-        # Perform disk I/O
-        with open("/tmp/activity.tmp", "wb") as f:
-            f.write(os.urandom(1024))
-            f.flush()
-            os.fsync(f.fileno())
-            
-    def _force_network_activity(self):
+    def _update_gradio_status(self):
         try:
-            requests.head("https://huggingface.co", timeout=1)
+            status_file = Path("/tmp/gradio_status.txt")
+            status_file.write_text(datetime.now().isoformat())
         except:
             pass
 
-class ProcessPriorityManager:
+class BrowserManager:
     def __init__(self):
-        self.libc = ctypes.CDLL('libc.so.6')
+        self.keep_alive = ContainerKeepAlive()
+        self.display = None
         
-    @contextmanager
-    def elevated_priority(self):
+    def setup(self):
         try:
-            # Try to set real-time priority using libc
-            self.libc.nice(-20)
-        except:
-            try:
-                # Fallback to regular nice value
-                os.nice(-10)
-            except:
-                logging.warning("Could not set process priority, continuing with default")
-        yield
-        try:
-            # Reset priority
-            os.nice(0)
-        except:
-            pass
-
-def ensure_container_activity():
-    """Ensures continuous system activity"""
-    monitor = SystemMonitor()
-    monitor.start()
-    return monitor
-
-class ActivityMonitor:
-    def __init__(self):
-        self.last_activity = time.time()
-        self.lock = threading.Lock()
-        self.matrix_size = 100
-        self.min_cpu_percent = 5
-        self.min_memory_percent = 40
-        
-    def update_activity(self):
-        with self.lock:
-            self.last_activity = time.time()
+            # Start virtual display with error handling
+            self.display = Display(visible=False, size=(1920, 1080))
+            self.display.start()
             
-    def get_idle_time(self):
-        with self.lock:
-            return time.time() - self.last_activity
+            # Start the keep-alive mechanism
+            self.keep_alive.start()
             
-    def increase_activity(self):
-        with self.lock:
-            self.matrix_size += 50
-            if self.matrix_size > 500:
-                self.matrix_size = 500
-                
-    def decrease_activity(self):
-        with self.lock:
-            self.matrix_size -= 50
-            if self.matrix_size < 100:
-                self.matrix_size = 100
-                
-    def get_matrix_size(self):
-        with self.lock:
-            return self.matrix_size
-
-# Global activity monitor
-activity_monitor = ActivityMonitor()
-
-def continuous_cpu_load():
-    """Maintains constant CPU activity with adaptive intensity"""
-    while not shutdown_event.is_set():
-        try:
-            matrix_size = activity_monitor.get_matrix_size()
-            # Matrix operations with SVD for intensive CPU usage
-            a = np.random.rand(matrix_size, matrix_size)
-            b = np.random.rand(matrix_size, matrix_size)
-            c = np.dot(a, b)
-            np.linalg.svd(c)  # More CPU intensive
-            
-            # Update activity timestamp
-            activity_monitor.update_activity()
-            
-            # Adaptive sleep based on CPU usage
-            cpu_percent = psutil.cpu_percent()
-            if cpu_percent > 80:
-                time.sleep(0.1)  # Longer sleep if CPU is too high
-            else:
-                time.sleep(0.01)  # Normal sleep
-                
-        except Exception as e:
-            logging.error(f"CPU load error: {str(e)}")
-
-def memory_activity():
-    """Maintains constant memory activity with adaptive allocation"""
-    chunk_size = 1024 * 1024  # 1MB base chunk
-    while not shutdown_event.is_set():
-        try:
-            data = []
-            mem = psutil.virtual_memory()
-            
-            # Adaptive chunk count based on available memory
-            target_chunks = max(1, int((90 - mem.percent) / 10))
-            
-            for _ in range(target_chunks):
-                if shutdown_event.is_set():
-                    break
-                data.append(os.urandom(chunk_size))
-                time.sleep(0.05)
-                
-            # Clear some data if memory usage is too high
-            while mem.percent > 85 and data:
-                data.pop()
-                mem = psutil.virtual_memory()
-                
-            activity_monitor.update_activity()
-            time.sleep(0.1)
+            # Additional setup for browser environment
+            os.environ['PYTHONUNBUFFERED'] = '1'
+            os.environ['DISPLAY'] = ':99'
             
         except Exception as e:
-            logging.error(f"Memory activity error: {str(e)}")
-
-def io_activity():
-    """Maintains constant I/O activity with adaptive writes"""
-    temp_file = "temp_activity.dat"
-    while not shutdown_event.is_set():
-        try:
-            # Adaptive write size based on disk usage
-            write_size = 1024 * 100  # Base: 100KB
-            
-            # Write and read from disk
-            with open(temp_file, "wb") as f:
-                f.write(os.urandom(write_size))
-            
-            with open(temp_file, "rb") as f:
-                f.read()
-                
-            activity_monitor.update_activity()
-            
-            # Adaptive sleep based on system load
-            load = os.getloadavg()[0]
-            sleep_time = min(1.0, max(0.1, load / 10.0))
-            time.sleep(sleep_time)
-            
-        except Exception as e:
-            logging.error(f"I/O activity error: {str(e)}")
+            logging.error(f"Browser manager setup error: {str(e)}")
+            raise
         
-    # Cleanup
+    def cleanup(self):
+        try:
+            if self.keep_alive:
+                self.keep_alive.stop()
+            if self.display:
+                self.display.stop()
+        except Exception as e:
+            logging.error(f"Cleanup error: {str(e)}")
+
+# Global browser manager
+browser_manager = BrowserManager()
+
+def run_job_with_activity():
+    """Priority-based job execution with container persistence"""
     try:
-        os.remove(temp_file)
-    except:
-        pass
-
-def network_activity():
-    """Maintains minimal network activity with retry mechanism"""
-    urls = [
-        "https://huggingface.co",
-        "https://google.com",
-        "https://microsoft.com"
-    ]
-    current_url_index = 0
-    
-    while not shutdown_event.is_set():
-        try:
-            url = urls[current_url_index]
-            response = requests.head(url, timeout=5)
-            if response.status_code == 200:
-                activity_monitor.update_activity()
-                time.sleep(2)
-            else:
-                # Try next URL if current one fails
-                current_url_index = (current_url_index + 1) % len(urls)
-                time.sleep(1)
-        except Exception as e:
-            logging.error(f"Network activity error: {str(e)}")
-            current_url_index = (current_url_index + 1) % len(urls)
-            time.sleep(1)
-
-def activity_coordinator():
-    """Coordinates all activity processes with adaptive resource management"""
-    threads = []
-    
-    # Start activity threads
-    activities = [
-        continuous_cpu_load,
-        memory_activity,
-        io_activity,
-        network_activity
-    ]
-    
-    for activity in activities:
-        thread = threading.Thread(target=activity, daemon=True)
-        thread.start()
-        threads.append(thread)
+        # Setup browser environment
+        browser_manager.setup()
         
-    # Monitor overall system activity
-    while not shutdown_event.is_set():
-        try:
-            idle_time = activity_monitor.get_idle_time()
-            cpu_percent = psutil.cpu_percent()
-            mem_percent = psutil.virtual_memory().percent
-            
-            # Adaptive activity adjustment
-            if idle_time > 60 or cpu_percent < activity_monitor.min_cpu_percent:
-                activity_monitor.increase_activity()
-                logging.warning("System idle or low CPU, increasing activity")
-            elif cpu_percent > 90:
-                activity_monitor.decrease_activity()
-                logging.info("High CPU usage, decreasing activity")
-                
-            # Memory management
-            if mem_percent < activity_monitor.min_memory_percent:
-                activity_queue.put(('increase_memory', None))
-            elif mem_percent > 90:
-                activity_queue.put(('decrease_memory', None))
-                
-            time.sleep(1)
-        except Exception as e:
-            logging.error(f"Activity coordinator error: {str(e)}")
-            
-    # Wait for all threads to finish
-    for thread in threads:
-        thread.join(timeout=1.0)
-
-def signal_handler(signum, frame):
-    """Handle shutdown signals"""
-    logging.info("Shutdown signal received, cleaning up...")
-    shutdown_event.set()
-    sys.exit(0)
-
-# Register signal handlers
-signal.signal(signal.SIGINT, signal_handler)
-signal.signal(signal.SIGTERM, signal_handler)
+        # Run main job
+        main()
+        
+    except Exception as e:
+        logging.exception("Job execution error")
+        sendNotification(
+            "⚠️ Error occurred, please check the log",
+            traceback.format_exc(),
+            e
+        )
+    finally:
+        # Cleanup browser environment
+        browser_manager.cleanup()
 
 def main():
     args = argumentParser()
     Utils.args = args
     loadedAccounts = setupAccounts()
 
-    # Load previous day's points data
     previous_points_data = load_previous_points_data()
 
     for currentAccount in loadedAccounts:
@@ -351,64 +193,23 @@ def main():
             )
             continue
         previous_points = previous_points_data.get(currentAccount.username, 0)
-
-        # Calculate the difference in points from the prior day
         points_difference = earned_points - previous_points
-
-        # Append the daily points and points difference to CSV and Excel
         log_daily_points_to_csv(earned_points, points_difference)
-
-        # Update the previous day's points data
         previous_points_data[currentAccount.username] = earned_points
-
         logging.info(
             f"[POINTS] Data for '{currentAccount.username}' appended to the file."
         )
 
-    # Save the current day's points data for the next day in the "logs" folder
     save_previous_points_data(previous_points_data)
     logging.info("[POINTS] Data saved for the next day.")
 
-def run_job_with_activity():
-    """Priority-based job execution with continuous system activity"""
-    try:
-        # Initialize process priority manager
-        priority_manager = ProcessPriorityManager()
-        
-        # Start system monitor
-        system_monitor = ensure_container_activity()
-        
-        with priority_manager.elevated_priority():
-            # Start activity coordinator in a separate thread
-            coordinator_thread = threading.Thread(target=activity_coordinator, daemon=True)
-            coordinator_thread.start()
-            
-            # Run main job
-            main()
-            
-    except Exception as e:
-        logging.exception("Job execution error")
-        sendNotification(
-            "⚠️ Error occurred, please check the log",
-            traceback.format_exc(),
-            e
-        )
-    finally:
-        # Cleanup and stop monitoring
-        system_monitor.stop()
-        shutdown_event.set()
-
 def create_accounts_json_from_env():
-    """Creates accounts.json file from ACCOUNTS environment variable.
-    Expected format of ACCOUNTS env var: 'email1:pass1,email2:pass2'
-    """
     try:
         accounts_str = os.getenv('ACCOUNTS', '')
         if not accounts_str:
             logging.warning("[ACCOUNT] No ACCOUNTS environment variable found")
             return
 
-        # Parse accounts string into list of dictionaries
         accounts = []
         for account_str in accounts_str.split(','):
             if ':' in account_str:
@@ -417,7 +218,6 @@ def create_accounts_json_from_env():
                     "username": username.strip(),
                     "password": password.strip()
                 })
-        # Write to accounts.json
         account_path = getProjectRoot() / "accounts.json"
         with open(account_path, 'w', encoding='utf-8') as f:
             json.dump(accounts, f, indent=4)
@@ -426,7 +226,6 @@ def create_accounts_json_from_env():
         logging.error("[ACCOUNT] Error creating accounts.json: %s", str(e))
 
 def create_config_yaml_from_env():
-    """Creates config-private.yaml file from TOKEN environment variable."""
     try:
         token = os.getenv('TOKEN', '')
         if not token:
@@ -437,8 +236,6 @@ def create_config_yaml_from_env():
                 'urls': [token]
             }
         }
-
-        # Write to config-private.yaml
         config_path = getProjectRoot() / "config-private.yaml"
         with open(config_path, 'w', encoding='utf-8') as f:
             yaml.dump(config, f, default_flow_style=False)
@@ -447,38 +244,16 @@ def create_config_yaml_from_env():
         logging.error("[CONFIG] Error creating config-private.yaml: %s", str(e))
 
 def downloadWebDriver():
-    # get the latest chrome driver version number
     download_url = "https://storage.googleapis.com/chrome-for-testing-public/128.0.6613.119/linux64/chromedriver-linux64.zip"
-    # download the zip file using the url built above
     latest_driver_zip = wget.download(download_url,'chromedriver.zip')
-
-    # extract the zip file
     with zipfile.ZipFile(latest_driver_zip, 'r') as zip_ref:
-        zip_ref.extractall() # you can specify the destination folder path here
-    # delete the zip file downloaded above
-    os.remove(latest_driver_zip)
-
-def downloadWebDriverv2():
-    # get the latest chrome driver version number
-    url = 'https://chromedriver.storage.googleapis.com/LATEST_RELEASE'
-    response = requests.get(url)
-    version_number = response.text
-
-    # build the donwload url
-    download_url = "https://chromedriver.storage.googleapis.com/" + version_number +"/chromedriver_linux64.zip"
-    # download the zip file using the url built above
-    latest_driver_zip = wget.download(download_url,'chromedriver.zip')
-    # extract the zip file
-    with zipfile.ZipFile(latest_driver_zip, 'r') as zip_ref:
-        zip_ref.extractall() # you can specify the destination folder path here
-    # delete the zip file downloaded above
+        zip_ref.extractall()
     os.remove(latest_driver_zip)
 
 def log_daily_points_to_csv(earned_points, points_difference):
     logs_directory = getProjectRoot() / "logs"
     csv_filename = logs_directory / "points_data.csv"
 
-    # Create a new row with the date, daily points, and points difference
     date = datetime.now().strftime("%Y-%m-%d")
     new_row = {
         "Date": date,
@@ -491,10 +266,8 @@ def log_daily_points_to_csv(earned_points, points_difference):
 
     with open(csv_filename, mode="a", newline="") as file:
         writer = csv.DictWriter(file, fieldnames=fieldnames)
-
         if is_new_file:
             writer.writeheader()
-
         writer.writerow(new_row)
 
 def setupLogging():
@@ -569,10 +342,7 @@ def argumentParser() -> argparse.Namespace:
     return parser.parse_args()
 
 def setupAccounts() -> list[Account]:
-    """Sets up and validates a list of accounts loaded from 'accounts.json'."""
-
     def validEmail(email: str) -> bool:
-        """Validate Email."""
         pattern = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
         return bool(re.match(pattern, email))
 
@@ -603,9 +373,6 @@ def setupAccounts() -> list[Account]:
     return loadedAccounts
 
 class AppriseSummary(Enum):
-    """
-    configures how results are summarized via Apprise
-    """
     ALWAYS = auto()
     ON_ERROR = auto()
     NEVER = auto()
@@ -698,19 +465,6 @@ def executeBot(currentAccount: Account, args: argparse.Namespace):
 
     return accountPoints
 
-def export_points_to_csv(points_data):
-    logs_directory = getProjectRoot() / "logs"
-    csv_filename = logs_directory / "points_data.csv"
-    with open(csv_filename, mode="a", newline="") as file:
-        fieldnames = ["Account", "Earned Points", "Points Difference"]
-        writer = csv.DictWriter(file, fieldnames=fieldnames)
-
-        if file.tell() == 0:
-            writer.writeheader()
-
-        for data in points_data:
-            writer.writerow(data)
-
 def load_previous_points_data():
     try:
         with open(getProjectRoot() / "logs" / "previous_points_data.json", "r") as file:
@@ -723,19 +477,11 @@ def save_previous_points_data(data):
     with open(logs_directory / "previous_points_data.json", "w") as file:
         json.dump(data, file, indent=4)
 
-def createDisplay():
-    """Create Display"""
-    try:
-        display = Display(visible=False, size=(1920, 1080))
-        display.start()
-    except Exception as exc:
-        logging.error(exc, exc_info=True)
-
 if __name__ == "__main__":
     setupLogging()
     logging.info("Starting application...")
     
-    # Start Gradio interface
+    # Configure Gradio with minimal resource usage
     iface = gr.Interface(
         fn=lambda: "Application is running",
         inputs=None,
@@ -744,10 +490,14 @@ if __name__ == "__main__":
         description="Monitoring application status"
     )
     
+    # Start Gradio in a separate thread with minimal resources
     interface_thread = Thread(target=lambda: iface.launch(
         server_name="0.0.0.0",
         server_port=7860,
-        prevent_thread_lock=True
+        prevent_thread_lock=True,
+        show_api=False,
+        show_error=False,
+        quiet=True
     ))
     interface_thread.daemon = True
     interface_thread.start()
@@ -755,15 +505,12 @@ if __name__ == "__main__":
     create_accounts_json_from_env()
     create_config_yaml_from_env()
     downloadWebDriver()
-    createDisplay()
     
-    # Initialize system monitor before running jobs
-    system_monitor = ensure_container_activity()
-    
-    # Run initial job with activity monitoring
+    # Run initial job
     run_job_with_activity()
     
-    # Schedule jobs
+    # Schedule jobs with more frequent intervals to prevent inactivity
+    schedule.every(15).minutes.do(lambda: Path("/tmp/heartbeat").touch())
     schedule.every().days.at("05:00", tz="America/New_York").do(run_job_with_activity)
     schedule.every().days.at("11:00", tz="America/New_York").do(run_job_with_activity)
     
@@ -771,8 +518,7 @@ if __name__ == "__main__":
         while True:
             schedule.run_pending()
             time.sleep(1)
-            activity_monitor.update_activity()
     except KeyboardInterrupt:
         logging.info("Shutting down...")
-        system_monitor.stop()
+        browser_manager.cleanup()
         shutdown_event.set()
