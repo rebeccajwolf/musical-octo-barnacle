@@ -51,6 +51,9 @@ class ActivityMonitor:
     def __init__(self):
         self.last_activity = time.time()
         self.lock = threading.Lock()
+        self.matrix_size = 100
+        self.min_cpu_percent = 5
+        self.min_memory_percent = 40
         
     def update_activity(self):
         with self.lock:
@@ -59,61 +62,100 @@ class ActivityMonitor:
     def get_idle_time(self):
         with self.lock:
             return time.time() - self.last_activity
+            
+    def increase_activity(self):
+        with self.lock:
+            self.matrix_size += 50
+            if self.matrix_size > 500:  # Cap matrix size
+                self.matrix_size = 500
+                
+    def decrease_activity(self):
+        with self.lock:
+            self.matrix_size -= 50
+            if self.matrix_size < 100:  # Minimum matrix size
+                self.matrix_size = 100
+                
+    def get_matrix_size(self):
+        with self.lock:
+            return self.matrix_size
 
 # Global activity monitor
 activity_monitor = ActivityMonitor()
 
 def continuous_cpu_load():
-    """Maintains constant CPU activity"""
-    matrix_size = 100
+    """Maintains constant CPU activity with adaptive intensity"""
     while not shutdown_event.is_set():
         try:
-            # Matrix operations
+            matrix_size = activity_monitor.get_matrix_size()
+            # Matrix operations with SVD for intensive CPU usage
             a = np.random.rand(matrix_size, matrix_size)
             b = np.random.rand(matrix_size, matrix_size)
-            np.dot(a, b)
-            np.linalg.svd(np.dot(a, b))  # More CPU intensive
+            c = np.dot(a, b)
+            np.linalg.svd(c)  # More CPU intensive
             
             # Update activity timestamp
             activity_monitor.update_activity()
             
-            # Small sleep to prevent CPU overload
-            time.sleep(0.01)
+            # Adaptive sleep based on CPU usage
+            cpu_percent = psutil.cpu_percent()
+            if cpu_percent > 80:
+                time.sleep(0.1)  # Longer sleep if CPU is too high
+            else:
+                time.sleep(0.01)  # Normal sleep
+                
         except Exception as e:
             logging.error(f"CPU load error: {str(e)}")
 
 def memory_activity():
-    """Maintains constant memory activity"""
+    """Maintains constant memory activity with adaptive allocation"""
+    chunk_size = 1024 * 1024  # 1MB base chunk
     while not shutdown_event.is_set():
         try:
-            # Allocate and deallocate memory
             data = []
-            for _ in range(50):
+            mem = psutil.virtual_memory()
+            
+            # Adaptive chunk count based on available memory
+            target_chunks = max(1, int((90 - mem.percent) / 10))
+            
+            for _ in range(target_chunks):
                 if shutdown_event.is_set():
                     break
-                data.append(os.urandom(1024 * 1024))  # 1MB
-                if len(data) > 5:
-                    data.pop(0)
-                time.sleep(0.1)
+                data.append(os.urandom(chunk_size))
+                time.sleep(0.05)
+                
+            # Clear some data if memory usage is too high
+            while mem.percent > 85 and data:
+                data.pop()
+                mem = psutil.virtual_memory()
                 
             activity_monitor.update_activity()
+            time.sleep(0.1)
+            
         except Exception as e:
             logging.error(f"Memory activity error: {str(e)}")
 
 def io_activity():
-    """Maintains constant I/O activity"""
+    """Maintains constant I/O activity with adaptive writes"""
     temp_file = "temp_activity.dat"
     while not shutdown_event.is_set():
         try:
+            # Adaptive write size based on disk usage
+            write_size = 1024 * 100  # Base: 100KB
+            
             # Write and read from disk
             with open(temp_file, "wb") as f:
-                f.write(os.urandom(1024 * 100))  # 100KB
+                f.write(os.urandom(write_size))
             
             with open(temp_file, "rb") as f:
                 f.read()
                 
             activity_monitor.update_activity()
-            time.sleep(0.5)
+            
+            # Adaptive sleep based on system load
+            load = os.getloadavg()[0]
+            sleep_time = min(1.0, max(0.1, load / 10.0))
+            time.sleep(sleep_time)
+            
         except Exception as e:
             logging.error(f"I/O activity error: {str(e)}")
         
@@ -124,18 +166,32 @@ def io_activity():
         pass
 
 def network_activity():
-    """Maintains minimal network activity"""
+    """Maintains minimal network activity with retry mechanism"""
+    urls = [
+        "https://huggingface.co",
+        "https://google.com",
+        "https://microsoft.com"
+    ]
+    current_url_index = 0
+    
     while not shutdown_event.is_set():
         try:
-            # Minimal HEAD request to avoid bandwidth usage
-            requests.head("https://huggingface.co", timeout=5)
-            activity_monitor.update_activity()
-            time.sleep(2)
+            url = urls[current_url_index]
+            response = requests.head(url, timeout=5)
+            if response.status_code == 200:
+                activity_monitor.update_activity()
+                time.sleep(2)
+            else:
+                # Try next URL if current one fails
+                current_url_index = (current_url_index + 1) % len(urls)
+                time.sleep(1)
         except Exception as e:
             logging.error(f"Network activity error: {str(e)}")
+            current_url_index = (current_url_index + 1) % len(urls)
+            time.sleep(1)
 
 def activity_coordinator():
-    """Coordinates all activity processes"""
+    """Coordinates all activity processes with adaptive resource management"""
     threads = []
     
     # Start activity threads
@@ -155,16 +211,22 @@ def activity_coordinator():
     while not shutdown_event.is_set():
         try:
             idle_time = activity_monitor.get_idle_time()
-            
-            # If system has been idle for too long, increase activity
-            if idle_time > 60:  # 1 minute
-                logging.warning("System idle detected, increasing activity")
-                activity_monitor.update_activity()
-                
-            # Check CPU usage and adjust if needed
             cpu_percent = psutil.cpu_percent()
-            if cpu_percent < 5:  # Ensure minimum CPU usage
-                np.random.rand(200, 200).dot(np.random.rand(200, 200))
+            mem_percent = psutil.virtual_memory().percent
+            
+            # Adaptive activity adjustment
+            if idle_time > 60 or cpu_percent < activity_monitor.min_cpu_percent:
+                activity_monitor.increase_activity()
+                logging.warning("System idle or low CPU, increasing activity")
+            elif cpu_percent > 90:
+                activity_monitor.decrease_activity()
+                logging.info("High CPU usage, decreasing activity")
+                
+            # Memory management
+            if mem_percent < activity_monitor.min_memory_percent:
+                activity_queue.put(('increase_memory', None))
+            elif mem_percent > 90:
+                activity_queue.put(('decrease_memory', None))
                 
             time.sleep(1)
         except Exception as e:
