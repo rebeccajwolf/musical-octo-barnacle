@@ -114,15 +114,15 @@ class BrowserManager:
     def setup(self):
         try:
             # Start virtual display
-            self.display = Display(visible=False, size=(1920, 1080))
+            self.display = Display(visible=False, size=(800, 600))
             self.display.start()
             
             # Start the keep-alive mechanism
             self.keep_alive.start()
             
             # Set environment variables
-            os.environ['PYTHONUNBUFFERED'] = '1'
-            os.environ['DISPLAY'] = ':99'
+            # os.environ['PYTHONUNBUFFERED'] = '1'
+            # os.environ['DISPLAY'] = ':99'
             
         except Exception as e:
             logging.error(f"Browser manager setup error: {str(e)}")
