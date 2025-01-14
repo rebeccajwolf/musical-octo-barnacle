@@ -30,6 +30,19 @@ import zipfile
 from queue import Queue
 import signal
 
+from src import (
+    Browser,
+    Login,
+    PunchCards,
+    Searches,
+    ReadToEarn,
+    Account,
+)
+from src.activities import Activities
+from src.browser import RemainingSearches
+from src.loggingColoredFormatter import ColoredFormatter
+from src.utils import Utils, CONFIG, sendNotification, getProjectRoot, formatNumber
+
 # Global event for coordinating shutdown
 shutdown_event = Event()
 activity_queue = Queue()
@@ -302,6 +315,112 @@ def run_job_with_activity():
         
         # Signal shutdown
         shutdown_event.set()
+
+
+def create_accounts_json_from_env():
+    """Creates accounts.json file from ACCOUNTS environment variable.
+    Expected format of ACCOUNTS env var: 'email1:pass1,email2:pass2'
+    """
+    try:
+        accounts_str = os.getenv('ACCOUNTS', '')
+        if not accounts_str:
+            logging.warning("[ACCOUNT] No ACCOUNTS environment variable found")
+            return
+
+        # Parse accounts string into list of dictionaries
+        accounts = []
+        for account_str in accounts_str.split(','):
+            if ':' in account_str:
+                username, password = account_str.split(':')
+                accounts.append({
+                    "username": username.strip(),
+                    "password": password.strip()
+                })
+        # Write to accounts.json
+        account_path = getProjectRoot() / "accounts.json"
+        with open(account_path, 'w', encoding='utf-8') as f:
+            json.dump(accounts, f, indent=4)
+            logging.info("[ACCOUNT] Successfully created accounts.json from environment variable")
+    except Exception as e:
+        logging.error("[ACCOUNT] Error creating accounts.json: %s", str(e))
+
+def create_config_yaml_from_env():
+    """Creates config-private.yaml file from TOKEN environment variable."""
+    try:
+        token = os.getenv('TOKEN', '')
+        if not token:
+            logging.warning("[CONFIG] No TOKEN environment variable found")
+            return
+        config = {
+            'apprise': {
+                'urls': [token]
+            }
+        }
+
+        # Write to config-private.yaml
+        config_path = getProjectRoot() / "config-private.yaml"
+        with open(config_path, 'w', encoding='utf-8') as f:
+            yaml.dump(config, f, default_flow_style=False)
+            logging.info("[CONFIG] Successfully created config-private.yaml from environment variable")
+    except Exception as e:
+        logging.error("[CONFIG] Error creating config-private.yaml: %s", str(e))
+
+def downloadWebDriver():
+    # get the latest chrome driver version number
+    # url = 'https://chromedriver.storage.googleapis.com/LATEST_RELEASE'
+    # response = requests.get(url)
+    # version_number = response.text
+
+    # build the donwload url
+    # download_url = "https://chromedriver.storage.googleapis.com/" + version_number +"/chromedriver_linux64.zip"
+    download_url = "https://storage.googleapis.com/chrome-for-testing-public/128.0.6613.119/linux64/chromedriver-linux64.zip"
+    # download the zip file using the url built above
+    latest_driver_zip = wget.download(download_url,'chromedriver.zip')
+
+    # extract the zip file
+    with zipfile.ZipFile(latest_driver_zip, 'r') as zip_ref:
+        zip_ref.extractall() # you can specify the destination folder path here
+    # delete the zip file downloaded above
+    os.remove(latest_driver_zip)
+
+def downloadWebDriverv2():
+    # get the latest chrome driver version number
+    url = 'https://chromedriver.storage.googleapis.com/LATEST_RELEASE'
+    response = requests.get(url)
+    version_number = response.text
+
+    # build the donwload url
+    download_url = "https://chromedriver.storage.googleapis.com/" + version_number +"/chromedriver_linux64.zip"
+    # download the zip file using the url built above
+    latest_driver_zip = wget.download(download_url,'chromedriver.zip')
+    # extract the zip file
+    with zipfile.ZipFile(latest_driver_zip, 'r') as zip_ref:
+        zip_ref.extractall() # you can specify the destination folder path here
+    # delete the zip file downloaded above
+    os.remove(latest_driver_zip)
+
+def log_daily_points_to_csv(earned_points, points_difference):
+    logs_directory = getProjectRoot() / "logs"
+    csv_filename = logs_directory / "points_data.csv"
+
+    # Create a new row with the date, daily points, and points difference
+    date = datetime.now().strftime("%Y-%m-%d")
+    new_row = {
+        "Date": date,
+        "Earned Points": earned_points,
+        "Points Difference": points_difference,
+    }
+
+    fieldnames = ["Date", "Earned Points", "Points Difference"]
+    is_new_file = not csv_filename.exists()
+
+    with open(csv_filename, mode="a", newline="") as file:
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+
+        if is_new_file:
+            writer.writeheader()
+
+        writer.writerow(new_row)
 
 def setupLogging():
     _format = "%(asctime)s [%(levelname)s] %(message)s"
