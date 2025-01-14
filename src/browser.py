@@ -328,7 +328,7 @@ class Browser:
         chrome_options.add_argument("--headless=new")
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument('--disable-dev-shm-usage')
-        driver = WebDriver(service=ChromeService(executable_path="/app/chromedriver"), options=chrome_options)
+        driver = WebDriver(service=ChromeService(getProjectRoot() / "chromedriver"), options=chrome_options)
         # driver = WebDriver(options=chrome_options)
         version = driver.capabilities["browserVersion"]
 
