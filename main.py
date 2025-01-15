@@ -44,120 +44,6 @@ from src.browser import RemainingSearches
 from src.loggingColoredFormatter import ColoredFormatter
 from src.utils import Utils, CONFIG, sendNotification, getProjectRoot, formatNumber
 
-# # Global event for coordinating shutdown
-# shutdown_event = Event()
-# activity_queue = Queue()
-
-# class ContainerMonitor:
-#     def __init__(self):
-#         self.running = True
-#         self._activity_thread = None
-#         self._resource_thread = None
-#         self._last_activity = time.time()
-        
-#     def start(self):
-#         self._activity_thread = threading.Thread(target=self._simulate_system_activity)
-#         self._activity_thread.daemon = True
-#         self._activity_thread.start()
-        
-#         self._resource_thread = threading.Thread(target=self._maintain_activity)
-#         self._resource_thread.daemon = True
-#         self._resource_thread.start()
-        
-#     def _simulate_system_activity(self):
-#         """Simulates regular system activity"""
-#         while self.running:
-#             try:
-#                 if time.time() - self._last_activity > 45:
-#                     # File system activity
-#                     with open('/tmp/activity.tmp', 'a') as f:
-#                         f.write('.')
-#                     if os.path.getsize('/tmp/activity.tmp') > 1024:
-#                         os.remove('/tmp/activity.tmp')
-                    
-#                     # Light CPU work
-#                     _ = [i for i in range(100) if i % 2 == 0]
-                    
-#                     self._last_activity = time.time()
-                
-#                 time.sleep(random.uniform(20, 40))
-                
-#             except Exception:
-#                 time.sleep(5)
-                
-#     def _maintain_activity(self):
-#         """Maintains minimal system activity"""
-#         while self.running:
-#             try:
-#                 # Touch activity file
-#                 Path('/tmp/active').touch(exist_ok=True)
-                
-#                 # Small memory allocation
-#                 _ = bytearray(1024)
-                
-#                 time.sleep(random.uniform(30, 60))
-                
-#             except Exception:
-#                 time.sleep(5)
-    
-#     def stop(self):
-#         self.running = False
-#         if self._activity_thread:
-#             self._activity_thread.join(timeout=2)
-#         if self._resource_thread:
-#             self._resource_thread.join(timeout=2)
-
-# class BrowserManager:
-#     def __init__(self):
-#         self.keep_alive = ContainerMonitor()
-#         self._display = None
-        
-#     def setup(self):
-#         try:
-#             self.keep_alive.start()
-            
-#             # Configure environment
-#             # os.environ['PYTHONUNBUFFERED'] = '1'
-            
-#             # Initialize virtual display using pyvirtualdisplay
-#             # self._setup_display()
-            
-#         except Exception as e:
-#             logging.error(f"Browser setup error: {str(e)}")
-#             raise
-            
-#     # def _setup_display(self):
-#     #     """Sets up virtual display using pyvirtualdisplay"""
-#     #     try:
-#     #         # Use pyvirtualdisplay instead of direct Xvfb
-#     #         self._display = Display(
-#     #             visible=0,
-#     #             size=(1920, 1080),
-#     #             backend="xvfb",  # Still uses Xvfb but through pyvirtualdisplay
-#     #             use_xauth=True
-#     #         )
-#     #         self._display.start()
-            
-#     #         # Set display environment variable - convert display number to string
-#     #         os.environ['DISPLAY'] = f":{str(self._display.display)}"
-            
-#     #     except Exception as e:
-#     #         logging.error(f"Display setup error: {str(e)}")
-#     #         raise
-        
-#     def cleanup(self):
-#         try:
-#             if self.keep_alive:
-#                 self.keep_alive.stop()
-            
-#             # if self._display:
-#             #     self._display.stop()
-                
-#         except Exception as e:
-#             logging.error(f"Cleanup error: {str(e)}")
-
-# # Global browser manager
-# browser_manager = BrowserManager()
 
 def executeBot(currentAccount: Account, args: argparse.Namespace) -> int:
     """Execute the bot for a single account and return earned points"""
@@ -247,12 +133,6 @@ def executeBot(currentAccount: Account, args: argparse.Namespace) -> int:
                 )
 
     return accountPoints
-
-# def signal_handler(signum, frame):
-#     logging.info("Received shutdown signal, cleaning up...")
-#     if hasattr(signal_handler, 'container_monitor'):
-#         signal_handler.container_monitor.stop()
-#     sys.exit(0)
 
 def setupLogging():
     _format = "%(asctime)s [%(levelname)s] %(message)s"
@@ -519,45 +399,90 @@ def save_previous_points_data(data):
     with open(logs_directory / "previous_points_data.json", "w") as file:
         json.dump(data, file, indent=4)
 
-if __name__ == "__main__":
-    setupLogging()
-    logging.info("Starting application...")
+class ScheduleManager:
+    def __init__(self):
+        self.running = True
+        self.stop_event = Event()
+        self._schedule_thread = None
+
+    def start(self):
+        """Start the schedule manager"""
+        self._schedule_thread = Thread(target=self._run_schedule, daemon=True)
+        self._schedule_thread.start()
+
+    def stop(self):
+        """Stop the schedule manager gracefully"""
+        self.running = False
+        self.stop_event.set()
+        if self._schedule_thread:
+            self._schedule_thread.join(timeout=5)
+
+    def _run_schedule(self):
+        """Run the schedule loop with proper error handling"""
+        while self.running and not self.stop_event.is_set():
+            try:
+                schedule.run_pending()
+                # Use event with timeout instead of sleep for more responsive shutdown
+                self.stop_event.wait(timeout=random.uniform(1, 2))
+            except Exception as e:
+                logging.error(f"Schedule error: {str(e)}")
+                time.sleep(5)  # Wait before retrying on error
+
+def setup_schedule():
+    """Set up the schedule with randomized times"""
+    # Clear any existing jobs
+    schedule.clear()
+
+    # Add some randomization to job times to avoid detection
+    base_morning_hour = 5
+    base_evening_hour = 11
     
-    # Initialize container monitor
-    # container_monitor = ContainerMonitor()
-    # signal_handler.container_monitor = container_monitor
-    # container_monitor.start()
+    # Add random minutes to base hours
+    morning_time = f"{base_morning_hour:02d}:{random.randint(0, 59):02d}"
+    evening_time = f"{base_evening_hour:02d}:{random.randint(0, 59):02d}"
+
+    # Schedule jobs
+    schedule.every().day.at(morning_time).do(run_job_with_activity)
+    schedule.every().day.at(evening_time).do(run_job_with_activity)
     
-    # Set up signal handlers
-    # signal.signal(signal.SIGTERM, signal_handler)
-    # signal.signal(signal.SIGINT, signal_handler)
-    
-    create_accounts_json_from_env()
-    create_config_yaml_from_env()
-    downloadWebDriver()
-    
-    # try:
-    run_job_with_activity()
-    
-    # Schedule jobs with natural intervals
-    # schedule.every(random.randint(20, 40)).minutes.do(
-    #     lambda: Path("/tmp/activity").touch()
-    # )
-    schedule.every().day.at("05:00").do(run_job_with_activity)
-    schedule.every().day.at("11:00").do(run_job_with_activity)
-    
-    while True:
-        schedule.run_pending()
-        time.sleep(random.uniform(1, 2))
+    logging.info(f"Scheduled jobs for {morning_time} and {evening_time}")
+
+def main_with_schedule():
+    """Main function with proper schedule handling"""
+    try:
+        # Initial setup
+        setupLogging()
+        logging.info("Starting application...")
+        
+        create_accounts_json_from_env()
+        create_config_yaml_from_env()
+        downloadWebDriver()
+        
+        # Run initial job
+        run_job_with_activity()
+        
+        # Set up and start scheduler
+        setup_schedule()
+        schedule_manager = ScheduleManager()
+        schedule_manager.start()
+        
+        # Wait for keyboard interrupt or other signals
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            logging.info("Received shutdown signal, cleaning up...")
+        finally:
+            schedule_manager.stop()
             
-    # except KeyboardInterrupt:
-    #     logging.info("Shutting down...")
-    #     container_monitor.stop()
-    #     browser_manager.cleanup()
-    #     shutdown_event.set()
-    # except Exception as e:
-    #     logging.exception("Fatal error occurred")
-    #     container_monitor.stop()
-    #     browser_manager.cleanup()
-    #     shutdown_event.set()
-    #     raise
+    except Exception as e:
+        logging.exception("Fatal error occurred")
+        sendNotification(
+            "⚠️ Fatal error occurred",
+            traceback.format_exc(),
+            e
+        )
+        raise
+
+if __name__ == "__main__":
+    main_with_schedule()

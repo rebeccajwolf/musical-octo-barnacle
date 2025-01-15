@@ -123,7 +123,8 @@ class Activities:
             f'//*[@id="daily-sets"]/mee-card-group[1]/div/mee-card[{cardId}]/div/card-content/mee-rewards-daily-set-item-content/div/a',
         )
         self.browser.utils.click(element)
-        self.browser.utils.switchToNewTab()
+        time.sleep(5)  # Add small delay to ensure click is registered
+        # self.browser.utils.switchToNewTab()
 
     def openMorePromotionsActivity(self, cardId: int):
         cardId += 1
@@ -133,6 +134,7 @@ class Activities:
             f"#more-activities > .m-card-group > .ng-scope:nth-child({cardId}) .ds-card-sec",
         )
         self.browser.utils.click(element)
+        time.sleep(5)  # Add small delay to ensure click is registered
         # self.browser.utils.switchToNewTab()
 
     def completeSearch(self):
@@ -340,7 +342,9 @@ class Activities:
             except:
                 pass
             finally:
-                self.browser.utils.switchToNewTab()
+                # Check if new tab exists before switching
+                if len(self.webdriver.window_handles) > 1:
+                    self.browser.utils.switchToNewTab()
             sleep(7)
             
             with contextlib.suppress(TimeoutException):

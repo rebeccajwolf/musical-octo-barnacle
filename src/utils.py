@@ -221,9 +221,13 @@ class Utils:
 
     def switchToNewTab(self, timeToWait: float = 15, closeTab: bool = False) -> None:
         time.sleep(timeToWait)
-        self.webdriver.switch_to.window(window_name=self.webdriver.window_handles[1])
-        if closeTab:
-            self.closeCurrentTab()
+        # Check if there is more than one tab before switching
+        if len(self.webdriver.window_handles) > 1:
+            self.webdriver.switch_to.window(window_name=self.webdriver.window_handles[1])
+            if closeTab:
+                self.closeCurrentTab()
+        else:
+            logging.debug("No new tab to switch to")
 
     def closeCurrentTab(self) -> None:
         self.webdriver.close()
