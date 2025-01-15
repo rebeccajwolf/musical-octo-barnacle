@@ -351,7 +351,6 @@ class Browser:
                     "geolocation",
                     "notifications",
                     "midi",
-                    "midi_sysex",
                     "clipboard_read",
                     "clipboard_write"
                 ]
