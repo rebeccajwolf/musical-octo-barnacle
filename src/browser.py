@@ -344,16 +344,6 @@ class Browser:
             ("Page.enable", {}),
             ("DOM.enable", {}),
             
-            # Enhanced permissions for Microsoft services
-            ("Browser.grantPermissions", {
-                "origin": "*",
-                "permissions": [
-                    "geolocation",
-                    "notifications",
-                    "midi"
-                ]
-            }),
-
             # Set custom headers
             ("Network.setExtraHTTPHeaders", {
                 "headers": {
@@ -364,6 +354,27 @@ class Browser:
                 }
             })
         ]
+
+        # Add permission grants for specific Microsoft domains
+        microsoft_domains = [
+            "https://www.bing.com",
+            "https://rewards.bing.com",
+            "https://account.microsoft.com",
+            "https://login.live.com"
+        ]
+        
+        for domain in microsoft_domains:
+            cdp_commands.append((
+                "Browser.grantPermissions",
+                {
+                    "origin": domain,
+                    "permissions": [
+                        "geolocation",
+                        "notifications",
+                        "midi"
+                    ]
+                }
+            ))
 
         for command, params in cdp_commands:
             if target_id:
