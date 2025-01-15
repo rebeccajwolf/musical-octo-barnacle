@@ -350,8 +350,7 @@ class Browser:
                 "permissions": [
                     "geolocation",
                     "notifications",
-                    "midi",
-                    "clipboard"
+                    "midi"
                 ]
             }),
 
