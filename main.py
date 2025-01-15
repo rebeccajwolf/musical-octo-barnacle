@@ -139,8 +139,8 @@ class BrowserManager:
             )
             self._display.start()
             
-            # Set display environment variable
-            os.environ['DISPLAY'] = self._display.display
+            # Set display environment variable - convert display number to string
+            os.environ['DISPLAY'] = f":{str(self._display.display)}"
             
         except Exception as e:
             logging.error(f"Display setup error: {str(e)}")
