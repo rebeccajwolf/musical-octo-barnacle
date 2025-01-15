@@ -503,26 +503,6 @@ if __name__ == "__main__":
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
     
-    # Initialize and start Gradio interface with minimal footprint
-    iface = gr.Interface(
-        fn=lambda: "Active",
-        inputs=None,
-        outputs="text",
-        title="Status",
-        description="System Monitor"
-    )
-    
-    interface_thread = Thread(target=lambda: iface.launch(
-        server_name="127.0.0.1",
-        server_port=7860,
-        prevent_thread_lock=True,
-        show_api=False,
-        show_error=False,
-        quiet=True
-    ))
-    interface_thread.daemon = True
-    interface_thread.start()
-    
     create_accounts_json_from_env()
     create_config_yaml_from_env()
     downloadWebDriver()
