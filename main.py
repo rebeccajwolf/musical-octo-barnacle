@@ -29,6 +29,7 @@ import zipfile
 from queue import Queue
 import signal
 import ctypes
+import shutil
 from contextlib import contextmanager
 from pyvirtualdisplay.display import Display
 
@@ -452,11 +453,41 @@ def create_config_yaml_from_env():
         logging.error("[CONFIG] Error creating config-private.yaml: %s", str(e))
 
 def downloadWebDriver():
-    download_url = "https://storage.googleapis.com/chrome-for-testing-public/128.0.6613.119/linux64/chromedriver-linux64.zip"
-    latest_driver_zip = wget.download(download_url,'chromedriver.zip')
-    with zipfile.ZipFile(latest_driver_zip, 'r') as zip_ref:
-        zip_ref.extractall()
-    os.remove(latest_driver_zip)
+    """Downloads and sets up chromedriver in the correct location"""
+    try:
+        # Download the zip file
+        download_url = "https://storage.googleapis.com/chrome-for-testing-public/128.0.6613.119/linux64/chromedriver-linux64.zip"
+        latest_driver_zip = wget.download(download_url, 'chromedriver.zip')
+        
+        # Create a temporary directory for extraction
+        temp_dir = Path('temp_chromedriver')
+        temp_dir.mkdir(exist_ok=True)
+        
+        # Extract the zip file to temp directory
+        with zipfile.ZipFile(latest_driver_zip, 'r') as zip_ref:
+            zip_ref.extractall(temp_dir)
+        
+        # Move the chromedriver to the correct location
+        chromedriver_src = temp_dir / 'chromedriver-linux64' / 'chromedriver'
+        chromedriver_dest = getProjectRoot() / 'chromedriver'
+        
+        # Ensure source file exists
+        if not chromedriver_src.exists():
+            raise FileNotFoundError(f"ChromeDriver not found in {chromedriver_src}")
+        
+        # Move the file and set permissions
+        shutil.move(str(chromedriver_src), str(chromedriver_dest))
+        os.chmod(chromedriver_dest, 0o755)
+        
+        # Cleanup
+        os.remove(latest_driver_zip)
+        shutil.rmtree(temp_dir)
+        
+        logging.info("ChromeDriver successfully installed")
+        
+    except Exception as e:
+        logging.error(f"Error downloading ChromeDriver: {str(e)}")
+        raise
 
 def log_daily_points_to_csv(earned_points, points_difference):
     logs_directory = getProjectRoot() / "logs"
