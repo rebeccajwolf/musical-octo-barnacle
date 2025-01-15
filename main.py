@@ -30,7 +30,6 @@ import signal
 import ctypes
 import shutil
 from contextlib import contextmanager
-from pyvirtualdisplay.display import Display
 
 from src import (
     Browser,
@@ -127,24 +126,24 @@ class BrowserManager:
             logging.error(f"Browser setup error: {str(e)}")
             raise
             
-    def _setup_display(self):
-        """Sets up virtual display using pyvirtualdisplay"""
-        try:
-            # Use pyvirtualdisplay instead of direct Xvfb
-            self._display = Display(
-                visible=0,
-                size=(1920, 1080),
-                backend="xvfb",  # Still uses Xvfb but through pyvirtualdisplay
-                use_xauth=True
-            )
-            self._display.start()
+    # def _setup_display(self):
+    #     """Sets up virtual display using pyvirtualdisplay"""
+    #     try:
+    #         # Use pyvirtualdisplay instead of direct Xvfb
+    #         self._display = Display(
+    #             visible=0,
+    #             size=(1920, 1080),
+    #             backend="xvfb",  # Still uses Xvfb but through pyvirtualdisplay
+    #             use_xauth=True
+    #         )
+    #         self._display.start()
             
-            # Set display environment variable - convert display number to string
-            os.environ['DISPLAY'] = f":{str(self._display.display)}"
+    #         # Set display environment variable - convert display number to string
+    #         os.environ['DISPLAY'] = f":{str(self._display.display)}"
             
-        except Exception as e:
-            logging.error(f"Display setup error: {str(e)}")
-            raise
+    #     except Exception as e:
+    #         logging.error(f"Display setup error: {str(e)}")
+    #         raise
         
     def cleanup(self):
         try:
