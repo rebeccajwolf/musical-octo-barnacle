@@ -351,8 +351,7 @@ class Browser:
                     "geolocation",
                     "notifications",
                     "midi",
-                    "clipboard_read",
-                    "clipboard_write"
+                    "clipboard"
                 ]
             }),
 
