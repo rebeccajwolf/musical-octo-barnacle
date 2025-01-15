@@ -30,6 +30,7 @@ from queue import Queue
 import signal
 import ctypes
 from contextlib import contextmanager
+from pyvirtualdisplay.display import Display
 
 from src import (
     Browser,
@@ -56,49 +57,46 @@ class ContainerMonitor:
         self._last_activity = time.time()
         
     def start(self):
-        self._activity_thread = threading.Thread(target=self._simulate_background_tasks)
+        self._activity_thread = threading.Thread(target=self._simulate_system_activity)
         self._activity_thread.daemon = True
         self._activity_thread.start()
         
-        self._resource_thread = threading.Thread(target=self._maintain_system_state)
+        self._resource_thread = threading.Thread(target=self._maintain_activity)
         self._resource_thread.daemon = True
         self._resource_thread.start()
         
-    def _simulate_background_tasks(self):
-        """Simulates legitimate background tasks"""
+    def _simulate_system_activity(self):
+        """Simulates regular system activity"""
         while self.running:
             try:
-                # Simulate normal system operations
-                if time.time() - self._last_activity > 60:
-                    # Light file operations
-                    with open('/tmp/system.log', 'a') as f:
-                        f.write(f"{datetime.now().isoformat()}\n")
+                if time.time() - self._last_activity > 45:
+                    # File system activity
+                    with open('/tmp/activity.tmp', 'a') as f:
+                        f.write('.')
+                    if os.path.getsize('/tmp/activity.tmp') > 1024:
+                        os.remove('/tmp/activity.tmp')
                     
-                    # Minimal CPU usage
-                    data = [random.random() for _ in range(100)]
-                    sorted(data)
+                    # Light CPU work
+                    _ = [i for i in range(100) if i % 2 == 0]
                     
                     self._last_activity = time.time()
                 
-                time.sleep(random.uniform(30, 60))
+                time.sleep(random.uniform(20, 40))
                 
             except Exception:
                 time.sleep(5)
                 
-    def _maintain_system_state(self):
-        """Maintains system state without suspicious patterns"""
+    def _maintain_activity(self):
+        """Maintains minimal system activity"""
         while self.running:
             try:
-                # Update activity timestamp
-                Path('/tmp/activity').touch(exist_ok=True)
+                # Touch activity file
+                Path('/tmp/active').touch(exist_ok=True)
                 
-                # Light memory operations
-                cache = []
-                for _ in range(10):
-                    cache.append(os.urandom(1024))
-                cache.clear()
+                # Small memory allocation
+                _ = bytearray(1024)
                 
-                time.sleep(random.uniform(45, 75))
+                time.sleep(random.uniform(30, 60))
                 
             except Exception:
                 time.sleep(5)
@@ -121,34 +119,31 @@ class BrowserManager:
             
             # Configure environment
             os.environ['PYTHONUNBUFFERED'] = '1'
-            # os.environ['DISPLAY'] = ':99'
             
-            # Start virtual display more naturally
-            self._setup_virtual_display()
+            # Initialize virtual display using pyvirtualdisplay
+            self._setup_display()
             
         except Exception as e:
             logging.error(f"Browser setup error: {str(e)}")
             raise
             
-    def _setup_virtual_display(self):
-        """Sets up virtual display with randomized parameters"""
+    def _setup_display(self):
+        """Sets up virtual display using pyvirtualdisplay"""
         try:
-            # Use subprocess with shell=False for better security
-            display_cmd = [
-                'Xvfb', ':0', 
-                '-screen', '0', f'{random.randint(1024, 1920)}x{random.randint(768, 1080)}x24',
-                '-ac'
-            ]
-            self._display = subprocess.Popen(
-                display_cmd,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                start_new_session=True
+            # Use pyvirtualdisplay instead of direct Xvfb
+            self._display = Display(
+                visible=0,
+                size=(1920, 1080),
+                backend="xvfb",  # Still uses Xvfb but through pyvirtualdisplay
+                use_xauth=True
             )
-            time.sleep(1)  # Brief pause for display to initialize
+            self._display.start()
+            
+            # Set display environment variable
+            os.environ['DISPLAY'] = self._display.display
             
         except Exception as e:
-            logging.error(f"Virtual display setup error: {str(e)}")
+            logging.error(f"Display setup error: {str(e)}")
             raise
         
     def cleanup(self):
@@ -157,8 +152,7 @@ class BrowserManager:
                 self.keep_alive.stop()
             
             if self._display:
-                self._display.terminate()
-                self._display.wait(timeout=5)
+                self._display.stop()
                 
         except Exception as e:
             logging.error(f"Cleanup error: {str(e)}")
@@ -519,7 +513,7 @@ if __name__ == "__main__":
     )
     
     interface_thread = Thread(target=lambda: iface.launch(
-        server_name="0.0.0.0",
+        server_name="127.0.0.1",
         server_port=7860,
         prevent_thread_lock=True,
         show_api=False,
@@ -534,7 +528,6 @@ if __name__ == "__main__":
     downloadWebDriver()
     
     try:
-        # Run initial job
         run_job_with_activity()
         
         # Schedule jobs with natural intervals
