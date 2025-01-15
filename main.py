@@ -118,10 +118,10 @@ class BrowserManager:
             self.keep_alive.start()
             
             # Configure environment
-            os.environ['PYTHONUNBUFFERED'] = '1'
+            # os.environ['PYTHONUNBUFFERED'] = '1'
             
             # Initialize virtual display using pyvirtualdisplay
-            self._setup_display()
+            # self._setup_display()
             
         except Exception as e:
             logging.error(f"Browser setup error: {str(e)}")
@@ -151,8 +151,8 @@ class BrowserManager:
             if self.keep_alive:
                 self.keep_alive.stop()
             
-            if self._display:
-                self._display.stop()
+            # if self._display:
+            #     self._display.stop()
                 
         except Exception as e:
             logging.error(f"Cleanup error: {str(e)}")
@@ -505,7 +505,7 @@ if __name__ == "__main__":
     
     create_accounts_json_from_env()
     create_config_yaml_from_env()
-    downloadWebDriver()
+    # downloadWebDriver()
     
     try:
         run_job_with_activity()
