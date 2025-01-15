@@ -107,6 +107,196 @@ class Browser:
         logging.info(f"Screen size: {screenWidth}x{screenHeight}")
         logging.info(f"Device size: {deviceWidth}x{deviceHeight}")
 
+        # Enhanced stealth script optimized for Microsoft services
+        stealth_js = """
+            (() => {
+                // Advanced stealth script optimized for Microsoft services
+                const hookProperty = (obj, prop, value) => {
+                    try {
+                        Object.defineProperty(obj, prop, {
+                            get() { return value; },
+                            set(v) { value = v; }
+                        });
+                    } catch (e) {}
+                };
+
+                // Microsoft-specific navigator properties
+                hookProperty(navigator, 'msMaxTouchPoints', 0);
+                hookProperty(navigator, 'msManipulationViewsEnabled', false);
+                hookProperty(navigator, 'msPointerEnabled', false);
+
+                // Enhanced permissions handling
+                const originalQuery = window.navigator.permissions.query;
+                window.navigator.permissions.__proto__.query = parameters =>
+                    parameters.name === 'notifications'
+                        ? Promise.resolve({state: Notification.permission})
+                        : originalQuery(parameters);
+
+                // WebGL enhancements for Microsoft services
+                const getParameter = WebGLRenderingContext.prototype.getParameter;
+                WebGLRenderingContext.prototype.getParameter = function(parameter) {
+                    const gl = this;
+                    
+                    // Randomize WebGL parameters slightly
+                    if (parameter === 37445) { // UNMASKED_VENDOR_WEBGL
+                        const vendors = ['Google Inc. (Intel)', 'Intel Inc.', 'Intel Open Source Technology Center'];
+                        return vendors[Math.floor(Math.random() * vendors.length)];
+                    }
+                    if (parameter === 37446) { // UNMASKED_RENDERER_WEBGL
+                        const renderers = [
+                            'ANGLE (Intel, Intel(R) UHD Graphics Direct3D11 vs_5_0 ps_5_0)',
+                            'ANGLE (Intel, Intel(R) Iris(R) Xe Graphics Direct3D11 vs_5_0 ps_5_0)',
+                            'ANGLE (Intel, Intel(R) HD Graphics 620 Direct3D11 vs_5_0 ps_5_0)'
+                        ];
+                        return renderers[Math.floor(Math.random() * renderers.length)];
+                    }
+                    return getParameter.apply(gl, arguments);
+                };
+
+                // Enhanced screen properties
+                const screenProps = {
+                    width: """ + str(screenWidth) + """,
+                    height: """ + str(screenHeight) + """,
+                    availWidth: """ + str(screenWidth) + """,
+                    availHeight: """ + str(screenHeight) + """,
+                    colorDepth: 24,
+                    pixelDepth: 24,
+                    availLeft: 0,
+                    availTop: 0
+                };
+
+                for (const [key, value] of Object.entries(screenProps)) {
+                    hookProperty(window.screen, key, value);
+                }
+
+                // Microsoft-specific window properties
+                hookProperty(window, 'innerWidth', """ + str(deviceWidth) + """);
+                hookProperty(window, 'innerHeight', """ + str(deviceHeight) + """);
+                hookProperty(window, 'outerWidth', """ + str(screenWidth) + """);
+                hookProperty(window, 'outerHeight', """ + str(screenHeight) + """);
+
+                // Enhanced plugin spoofing
+                const createFakePluginArray = () => {
+                    const plugins = [
+                        {
+                            0: {type: 'application/x-google-chrome-pdf', suffixes: 'pdf', description: 'Portable Document Format'},
+                            description: 'Portable Document Format',
+                            filename: 'internal-pdf-viewer',
+                            length: 1,
+                            name: 'Chrome PDF Plugin'
+                        },
+                        {
+                            0: {type: 'application/pdf', suffixes: 'pdf', description: 'Portable Document Format'},
+                            description: 'Portable Document Format',
+                            filename: 'internal-pdf-viewer',
+                            length: 1,
+                            name: 'Chrome PDF Viewer'
+                        },
+                        {
+                            0: {type: 'application/x-nacl', suffixes: '', description: 'Native Client Executable'},
+                            1: {type: 'application/x-pnacl', suffixes: '', description: 'Portable Native Client Executable'},
+                            description: 'Native Client',
+                            filename: 'internal-nacl-plugin',
+                            length: 2,
+                            name: 'Native Client'
+                        }
+                    ];
+
+                    plugins.__proto__ = {
+                        item: function(index) { return this[index]; },
+                        namedItem: function(name) { return this[name]; },
+                        refresh: function() {},
+                        [Symbol.iterator]: function* () {
+                            for (let i = 0; i < this.length; i++) {
+                                yield this[i];
+                            }
+                        }
+                    };
+
+                    return Object.setPrototypeOf(plugins, Plugin.prototype);
+                };
+
+                hookProperty(navigator, 'plugins', createFakePluginArray());
+
+                // Enhanced Chrome runtime
+                if (window.chrome) {
+                    const originalChrome = window.chrome;
+                    window.chrome = {
+                        ...originalChrome,
+                        runtime: {
+                            ...originalChrome.runtime,
+                            connect: () => ({
+                                onMessage: {
+                                    addListener: () => {},
+                                    removeListener: () => {}
+                                },
+                                postMessage: () => {},
+                                disconnect: () => {}
+                            }),
+                            sendMessage: () => {},
+                            onMessage: {
+                                addListener: () => {},
+                                removeListener: () => {}
+                            }
+                        },
+                        csi: () => {},
+                        loadTimes: () => {}
+                    };
+                }
+
+                // Enhanced error handling
+                window.onerror = function(msg, url, line, col, error) {
+                    if (msg.toLowerCase().includes('automation') || 
+                        msg.toLowerCase().includes('webdriver') ||
+                        msg.toLowerCase().includes('selenium')) {
+                        return true;
+                    }
+                };
+
+                // Override property descriptors
+                const overridePropertyDescriptor = (obj, prop, value) => {
+                    try {
+                        Object.defineProperty(obj, prop, {
+                            get() { return value; }
+                        });
+                    } catch (e) {}
+                };
+
+                // Enhanced navigator properties
+                overridePropertyDescriptor(navigator, 'productSub', '20100101');
+                overridePropertyDescriptor(navigator, 'vendor', 'Google Inc.');
+                overridePropertyDescriptor(navigator, 'hardwareConcurrency', 8);
+                overridePropertyDescriptor(navigator, 'deviceMemory', 8);
+                overridePropertyDescriptor(navigator, 'webdriver', undefined);
+                overridePropertyDescriptor(navigator, 'connection', {
+                    effectiveType: '4g',
+                    rtt: 50,
+                    downlink: 10,
+                    saveData: false
+                });
+
+                // Add natural browser behavior
+                let lastMouseMove = 0;
+                document.addEventListener('mousemove', function(e) {
+                    const now = Date.now();
+                    if (now - lastMouseMove < 10) return;
+                    lastMouseMove = now;
+                }, true);
+
+                document.addEventListener('mousedown', function(e) {
+                    if (e.isTrusted === false) return;
+                }, true);
+
+                // Override toString for native functions
+                const _toString = Function.prototype.toString;
+                Function.prototype.toString = function() {
+                    if (this === Function.prototype.toString) return _toString.call(_toString);
+                    if (this === Function.prototype.bind) return 'function bind() { [native code] }';
+                    return _toString.call(this);
+                };
+            })();
+        """
+
         cdp_commands = [
             (
                 "Emulation.setTouchEmulationEnabled",
@@ -138,23 +328,44 @@ class Browser:
                     "userAgent": self.userAgent,
                     "platform": self.userAgentMetadata["platform"],
                     "userAgentMetadata": self.userAgentMetadata,
+                    "acceptLanguage": f"{self.localeLang}-{self.localeGeo},{self.localeLang};q=0.9,en;q=0.8"
                 },
             ),
             (
-                "Page.addScriptToEvaluateOnNewDocument", {
-                    "source": """
-                        Object.defineProperty(navigator, 'webdriver', {
-                            get: () => undefined
-                        });
-                        Object.defineProperty(navigator, 'plugins', {
-                            get: () => [1, 2, 3, 4, 5]
-                        });
-                        window.chrome = {
-                            runtime: {}
-                        };
-                    """
+                "Page.addScriptToEvaluateOnNewDocument",
+                {
+                    "source": stealth_js
                 }
-            )
+            ),
+            # Enhanced CDP commands for Microsoft services
+            ("Page.setBypassCSP", {"enabled": True}),
+            ("Network.setBypassServiceWorker", {"bypass": True}),
+            ("Network.enable", {}),
+            ("Page.enable", {}),
+            ("DOM.enable", {}),
+            
+            # Enhanced permissions for Microsoft services
+            ("Browser.grantPermissions", {
+                "origin": "*",
+                "permissions": [
+                    "geolocation",
+                    "notifications",
+                    "midi",
+                    "midi_sysex",
+                    "clipboard_read",
+                    "clipboard_write"
+                ]
+            }),
+
+            # Set custom headers
+            ("Network.setExtraHTTPHeaders", {
+                "headers": {
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                    "Accept-Language": f"{self.localeLang}-{self.localeGeo},{self.localeLang};q=0.9,en;q=0.8",
+                    "DNT": "1",
+                    "Upgrade-Insecure-Requests": "1"
+                }
+            })
         ]
 
         for command, params in cdp_commands:
@@ -202,7 +413,7 @@ class Browser:
         options.add_argument("--ignore-certificate-errors")
         options.add_argument("--ignore-certificate-errors-spki-list")
         options.add_argument("--ignore-ssl-errors")
-        # options.add_argument("--headless=new")
+        options.add_argument("--headless=new")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-extensions")
@@ -213,32 +424,51 @@ class Browser:
         options.add_argument("--disable-features=PrivacySandboxSettings4")
         options.add_argument("--disable-http2")
         options.add_argument("--disable-software-rasterizer")
-        # options.add_argument("--disable-setuid-sandbox")
-        # options.add_argument("--window-size=800,600")
-        # options.add_argument("--single-process")  # Reduces memory footprint
-        # options.add_argument("--disable-software-rasterizer")  # Reduces GPU memory usage
-        # options.add_argument("--disable-plugins")
-        # options.add_argument("--disable-popup-blocking")
-        # options.add_argument("--disable-infobars")
-        # options.add_argument("--incognito")  # Reduces cache/history memory usage
-        # options.add_argument("--aggressive-cache-discard")
-        # options.add_argument("--disable-cache")
-        # options.add_argument("--disable-application-cache")
-        # options.add_argument("--disable-offline-load-stale-cache")
-        # options.add_argument("--disk-cache-size=0")
-        # options.add_argument("--disable-background-networking")
-        # options.add_argument("--disable-component-extensions-with-background-pages")
-        # options.add_argument("--disable-sync")
-        # options.add_argument("--disable-translate")
-        # options.add_argument("--hide-scrollbars")
-        # options.add_argument("--metrics-recording-only")
-        # options.add_argument("--mute-audio")
-        # options.add_argument("--no-first-run")
-        # options.add_argument("--safebrowsing-disable-auto-update")
         options.add_argument("--disable-search-engine-choice-screen")  # 153
+
+
+        # Enhanced privacy and security options
+        options.add_argument("--disable-web-security")
+        options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_argument("--disable-features=IsolateOrigins,site-per-process,AutomationControlled")
+        options.add_argument("--disable-blink-features")
+
+        # Performance and stability options
+        options.add_argument("--disable-dev-tools")
+        options.add_argument("--disable-background-networking")
+        options.add_argument("--disable-background-timer-throttling")
+        options.add_argument("--disable-backgrounding-occluded-windows")
+        options.add_argument("--disable-breakpad")
+        options.add_argument("--disable-component-extensions-with-background-pages")
+        options.add_argument("--disable-features=TranslateUI")
+        options.add_argument("--disable-ipc-flooding-protection")
+        options.add_argument("--disable-renderer-backgrounding")
+        options.add_argument("--force-color-profile=srgb")
+        options.add_argument("--metrics-recording-only")
+        options.add_argument("--no-first-run")
+
+        # Microsoft-specific options
+        options.add_argument("--disable-prompt-on-repost")
+        options.add_argument("--disable-domain-reliability")
+        options.add_argument("--disable-client-side-phishing-detection")
+
+        # Experimental options
+        options.add_experimental_option("excludeSwitches", ["enable-automation", "enable-logging"])
+        options.add_experimental_option("useAutomationExtension", False)
+
+
         options.page_load_strategy = "eager"
 
-        seleniumwireOptions: dict[str, Any] = {"verify_ssl": False}
+        seleniumwireOptions: dict[str, Any] = {
+            "verify_ssl": False,
+            "suppress_connection_errors": True,
+            "exclude_hosts": [
+                "google-analytics.com",
+                "doubleclick.net",
+                "bat.bing.com",
+                "browser.events.data.msn.com"
+            ]
+        }
 
         if self.proxy:
             # Setup proxy if provided

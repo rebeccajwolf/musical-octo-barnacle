@@ -44,120 +44,120 @@ from src.browser import RemainingSearches
 from src.loggingColoredFormatter import ColoredFormatter
 from src.utils import Utils, CONFIG, sendNotification, getProjectRoot, formatNumber
 
-# Global event for coordinating shutdown
-shutdown_event = Event()
-activity_queue = Queue()
+# # Global event for coordinating shutdown
+# shutdown_event = Event()
+# activity_queue = Queue()
 
-class ContainerMonitor:
-    def __init__(self):
-        self.running = True
-        self._activity_thread = None
-        self._resource_thread = None
-        self._last_activity = time.time()
+# class ContainerMonitor:
+#     def __init__(self):
+#         self.running = True
+#         self._activity_thread = None
+#         self._resource_thread = None
+#         self._last_activity = time.time()
         
-    def start(self):
-        self._activity_thread = threading.Thread(target=self._simulate_system_activity)
-        self._activity_thread.daemon = True
-        self._activity_thread.start()
+#     def start(self):
+#         self._activity_thread = threading.Thread(target=self._simulate_system_activity)
+#         self._activity_thread.daemon = True
+#         self._activity_thread.start()
         
-        self._resource_thread = threading.Thread(target=self._maintain_activity)
-        self._resource_thread.daemon = True
-        self._resource_thread.start()
+#         self._resource_thread = threading.Thread(target=self._maintain_activity)
+#         self._resource_thread.daemon = True
+#         self._resource_thread.start()
         
-    def _simulate_system_activity(self):
-        """Simulates regular system activity"""
-        while self.running:
-            try:
-                if time.time() - self._last_activity > 45:
-                    # File system activity
-                    with open('/tmp/activity.tmp', 'a') as f:
-                        f.write('.')
-                    if os.path.getsize('/tmp/activity.tmp') > 1024:
-                        os.remove('/tmp/activity.tmp')
+#     def _simulate_system_activity(self):
+#         """Simulates regular system activity"""
+#         while self.running:
+#             try:
+#                 if time.time() - self._last_activity > 45:
+#                     # File system activity
+#                     with open('/tmp/activity.tmp', 'a') as f:
+#                         f.write('.')
+#                     if os.path.getsize('/tmp/activity.tmp') > 1024:
+#                         os.remove('/tmp/activity.tmp')
                     
-                    # Light CPU work
-                    _ = [i for i in range(100) if i % 2 == 0]
+#                     # Light CPU work
+#                     _ = [i for i in range(100) if i % 2 == 0]
                     
-                    self._last_activity = time.time()
+#                     self._last_activity = time.time()
                 
-                time.sleep(random.uniform(20, 40))
+#                 time.sleep(random.uniform(20, 40))
                 
-            except Exception:
-                time.sleep(5)
+#             except Exception:
+#                 time.sleep(5)
                 
-    def _maintain_activity(self):
-        """Maintains minimal system activity"""
-        while self.running:
-            try:
-                # Touch activity file
-                Path('/tmp/active').touch(exist_ok=True)
+#     def _maintain_activity(self):
+#         """Maintains minimal system activity"""
+#         while self.running:
+#             try:
+#                 # Touch activity file
+#                 Path('/tmp/active').touch(exist_ok=True)
                 
-                # Small memory allocation
-                _ = bytearray(1024)
+#                 # Small memory allocation
+#                 _ = bytearray(1024)
                 
-                time.sleep(random.uniform(30, 60))
+#                 time.sleep(random.uniform(30, 60))
                 
-            except Exception:
-                time.sleep(5)
+#             except Exception:
+#                 time.sleep(5)
     
-    def stop(self):
-        self.running = False
-        if self._activity_thread:
-            self._activity_thread.join(timeout=2)
-        if self._resource_thread:
-            self._resource_thread.join(timeout=2)
+#     def stop(self):
+#         self.running = False
+#         if self._activity_thread:
+#             self._activity_thread.join(timeout=2)
+#         if self._resource_thread:
+#             self._resource_thread.join(timeout=2)
 
-class BrowserManager:
-    def __init__(self):
-        self.keep_alive = ContainerMonitor()
-        self._display = None
+# class BrowserManager:
+#     def __init__(self):
+#         self.keep_alive = ContainerMonitor()
+#         self._display = None
         
-    def setup(self):
-        try:
-            self.keep_alive.start()
+#     def setup(self):
+#         try:
+#             self.keep_alive.start()
             
-            # Configure environment
-            # os.environ['PYTHONUNBUFFERED'] = '1'
+#             # Configure environment
+#             # os.environ['PYTHONUNBUFFERED'] = '1'
             
-            # Initialize virtual display using pyvirtualdisplay
-            # self._setup_display()
+#             # Initialize virtual display using pyvirtualdisplay
+#             # self._setup_display()
             
-        except Exception as e:
-            logging.error(f"Browser setup error: {str(e)}")
-            raise
+#         except Exception as e:
+#             logging.error(f"Browser setup error: {str(e)}")
+#             raise
             
-    # def _setup_display(self):
-    #     """Sets up virtual display using pyvirtualdisplay"""
-    #     try:
-    #         # Use pyvirtualdisplay instead of direct Xvfb
-    #         self._display = Display(
-    #             visible=0,
-    #             size=(1920, 1080),
-    #             backend="xvfb",  # Still uses Xvfb but through pyvirtualdisplay
-    #             use_xauth=True
-    #         )
-    #         self._display.start()
+#     # def _setup_display(self):
+#     #     """Sets up virtual display using pyvirtualdisplay"""
+#     #     try:
+#     #         # Use pyvirtualdisplay instead of direct Xvfb
+#     #         self._display = Display(
+#     #             visible=0,
+#     #             size=(1920, 1080),
+#     #             backend="xvfb",  # Still uses Xvfb but through pyvirtualdisplay
+#     #             use_xauth=True
+#     #         )
+#     #         self._display.start()
             
-    #         # Set display environment variable - convert display number to string
-    #         os.environ['DISPLAY'] = f":{str(self._display.display)}"
+#     #         # Set display environment variable - convert display number to string
+#     #         os.environ['DISPLAY'] = f":{str(self._display.display)}"
             
-    #     except Exception as e:
-    #         logging.error(f"Display setup error: {str(e)}")
-    #         raise
+#     #     except Exception as e:
+#     #         logging.error(f"Display setup error: {str(e)}")
+#     #         raise
         
-    def cleanup(self):
-        try:
-            if self.keep_alive:
-                self.keep_alive.stop()
+#     def cleanup(self):
+#         try:
+#             if self.keep_alive:
+#                 self.keep_alive.stop()
             
-            # if self._display:
-            #     self._display.stop()
+#             # if self._display:
+#             #     self._display.stop()
                 
-        except Exception as e:
-            logging.error(f"Cleanup error: {str(e)}")
+#         except Exception as e:
+#             logging.error(f"Cleanup error: {str(e)}")
 
-# Global browser manager
-browser_manager = BrowserManager()
+# # Global browser manager
+# browser_manager = BrowserManager()
 
 def executeBot(currentAccount: Account, args: argparse.Namespace) -> int:
     """Execute the bot for a single account and return earned points"""
@@ -248,11 +248,11 @@ def executeBot(currentAccount: Account, args: argparse.Namespace) -> int:
 
     return accountPoints
 
-def signal_handler(signum, frame):
-    logging.info("Received shutdown signal, cleaning up...")
-    if hasattr(signal_handler, 'container_monitor'):
-        signal_handler.container_monitor.stop()
-    sys.exit(0)
+# def signal_handler(signum, frame):
+#     logging.info("Received shutdown signal, cleaning up...")
+#     if hasattr(signal_handler, 'container_monitor'):
+#         signal_handler.container_monitor.stop()
+#     sys.exit(0)
 
 def setupLogging():
     _format = "%(asctime)s [%(levelname)s] %(message)s"
@@ -365,7 +365,7 @@ def run_job_with_activity():
     """Priority-based job execution with container persistence"""
     try:
         # Setup browser environment
-        browser_manager.setup()
+        # browser_manager.setup()
         
         # Run main job
         main()
@@ -377,9 +377,9 @@ def run_job_with_activity():
             traceback.format_exc(),
             e
         )
-    finally:
-        # Cleanup browser environment
-        browser_manager.cleanup()
+    # finally:
+    #     # Cleanup browser environment
+    #     browser_manager.cleanup()
 
 def main():
     args = argumentParser()
@@ -524,40 +524,40 @@ if __name__ == "__main__":
     logging.info("Starting application...")
     
     # Initialize container monitor
-    container_monitor = ContainerMonitor()
-    signal_handler.container_monitor = container_monitor
-    container_monitor.start()
+    # container_monitor = ContainerMonitor()
+    # signal_handler.container_monitor = container_monitor
+    # container_monitor.start()
     
     # Set up signal handlers
-    signal.signal(signal.SIGTERM, signal_handler)
-    signal.signal(signal.SIGINT, signal_handler)
+    # signal.signal(signal.SIGTERM, signal_handler)
+    # signal.signal(signal.SIGINT, signal_handler)
     
     create_accounts_json_from_env()
     create_config_yaml_from_env()
     downloadWebDriver()
     
-    try:
-        run_job_with_activity()
-        
-        # Schedule jobs with natural intervals
-        schedule.every(random.randint(20, 40)).minutes.do(
-            lambda: Path("/tmp/activity").touch()
-        )
-        schedule.every().day.at("05:00").do(run_job_with_activity)
-        schedule.every().day.at("11:00").do(run_job_with_activity)
-        
-        while True:
-            schedule.run_pending()
-            time.sleep(random.uniform(1, 2))
+    # try:
+    run_job_with_activity()
+    
+    # Schedule jobs with natural intervals
+    # schedule.every(random.randint(20, 40)).minutes.do(
+    #     lambda: Path("/tmp/activity").touch()
+    # )
+    schedule.every().day.at("05:00").do(run_job_with_activity)
+    schedule.every().day.at("11:00").do(run_job_with_activity)
+    
+    while True:
+        schedule.run_pending()
+        time.sleep(random.uniform(1, 2))
             
-    except KeyboardInterrupt:
-        logging.info("Shutting down...")
-        container_monitor.stop()
-        browser_manager.cleanup()
-        shutdown_event.set()
-    except Exception as e:
-        logging.exception("Fatal error occurred")
-        container_monitor.stop()
-        browser_manager.cleanup()
-        shutdown_event.set()
-        raise
+    # except KeyboardInterrupt:
+    #     logging.info("Shutting down...")
+    #     container_monitor.stop()
+    #     browser_manager.cleanup()
+    #     shutdown_event.set()
+    # except Exception as e:
+    #     logging.exception("Fatal error occurred")
+    #     container_monitor.stop()
+    #     browser_manager.cleanup()
+    #     shutdown_event.set()
+    #     raise
