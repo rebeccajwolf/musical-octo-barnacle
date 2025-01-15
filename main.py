@@ -20,7 +20,6 @@ import multiprocessing as mp
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from datetime import datetime
 from enum import Enum, auto
-from pyvirtualdisplay import Display
 from threading import Thread, Event
 from pathlib import Path
 import requests
@@ -51,89 +50,116 @@ activity_queue = Queue()
 
 class ContainerMonitor:
     def __init__(self):
-        self.node_process = None
-        self.monitor_thread = None
         self.running = True
-        self.heartbeat_interval = 30
+        self._activity_thread = None
+        self._resource_thread = None
+        self._last_activity = time.time()
         
     def start(self):
-        # Start Node.js monitor
-        self.node_process = subprocess.Popen(
-            ['node', 'container_monitor.js'],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
+        self._activity_thread = threading.Thread(target=self._simulate_background_tasks)
+        self._activity_thread.daemon = True
+        self._activity_thread.start()
         
-        # Start monitor thread
-        self.monitor_thread = threading.Thread(target=self._monitor_loop)
-        self.monitor_thread.daemon = True
-        self.monitor_thread.start()
+        self._resource_thread = threading.Thread(target=self._maintain_system_state)
+        self._resource_thread.daemon = True
+        self._resource_thread.start()
         
-    def _monitor_loop(self):
+    def _simulate_background_tasks(self):
+        """Simulates legitimate background tasks"""
         while self.running:
             try:
-                # Check Node.js monitor health
-                requests.get('http://localhost:8080', timeout=5)
+                # Simulate normal system operations
+                if time.time() - self._last_activity > 60:
+                    # Light file operations
+                    with open('/tmp/system.log', 'a') as f:
+                        f.write(f"{datetime.now().isoformat()}\n")
+                    
+                    # Minimal CPU usage
+                    data = [random.random() for _ in range(100)]
+                    sorted(data)
+                    
+                    self._last_activity = time.time()
                 
-                # Check system resources
-                cpu_percent = psutil.cpu_percent(interval=1)
-                mem_percent = psutil.virtual_memory().percent
+                time.sleep(random.uniform(30, 60))
                 
-                # Generate CPU activity if needed
-                if cpu_percent < 1.0:
-                    _ = [i * i for i in range(10000)]
+            except Exception:
+                time.sleep(5)
                 
-                # Memory activity
-                temp_array = np.zeros((100, 100), dtype=np.float32)
-                del temp_array
+    def _maintain_system_state(self):
+        """Maintains system state without suspicious patterns"""
+        while self.running:
+            try:
+                # Update activity timestamp
+                Path('/tmp/activity').touch(exist_ok=True)
                 
-                # File system activity
-                Path('/tmp/activity_marker').touch()
-                Path('/tmp/heartbeat').touch()
+                # Light memory operations
+                cache = []
+                for _ in range(10):
+                    cache.append(os.urandom(1024))
+                cache.clear()
                 
-                logging.debug(f"Monitor stats - CPU: {cpu_percent}%, Memory: {mem_percent}%")
+                time.sleep(random.uniform(45, 75))
                 
-            except Exception as e:
-                logging.error(f"Monitor error: {str(e)}")
-            
-            time.sleep(self.heartbeat_interval)
+            except Exception:
+                time.sleep(5)
     
     def stop(self):
         self.running = False
-        if self.node_process:
-            self.node_process.terminate()
-            self.node_process.wait()
-        if self.monitor_thread:
-            self.monitor_thread.join(timeout=5)
+        if self._activity_thread:
+            self._activity_thread.join(timeout=2)
+        if self._resource_thread:
+            self._resource_thread.join(timeout=2)
 
 class BrowserManager:
     def __init__(self):
         self.keep_alive = ContainerMonitor()
-        self.display = None
+        self._display = None
         
     def setup(self):
         try:
-            # Start virtual display
-            self.display = Display(visible=False, size=(800, 600))
-            self.display.start()
-            
-            # Start the keep-alive mechanism
             self.keep_alive.start()
             
-            # Set environment variables
-            # os.environ['PYTHONUNBUFFERED'] = '1'
-            # os.environ['DISPLAY'] = ':99'
+            # Configure environment
+            os.environ['PYTHONUNBUFFERED'] = '1'
+            os.environ['DISPLAY'] = ':99'
+            
+            # Start virtual display more naturally
+            self._setup_virtual_display()
             
         except Exception as e:
-            logging.error(f"Browser manager setup error: {str(e)}")
+            logging.error(f"Browser setup error: {str(e)}")
+            raise
+            
+    def _setup_virtual_display(self):
+        """Sets up virtual display with randomized parameters"""
+        try:
+            # Use subprocess with shell=False for better security
+            display_cmd = [
+                'Xvfb', ':99', 
+                '-screen', '0', f'{random.randint(1024, 1920)}x{random.randint(768, 1080)}x24',
+                '-ac'
+            ]
+            self._display = subprocess.Popen(
+                display_cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True
+            )
+            time.sleep(1)  # Brief pause for display to initialize
+            
+        except Exception as e:
+            logging.error(f"Virtual display setup error: {str(e)}")
             raise
         
     def cleanup(self):
         try:
             if self.keep_alive:
                 self.keep_alive.stop()
-            if self.display:
-                self.display.stop()
+            
+            if self._display:
+                self._display.terminate()
+                self._display.wait(timeout=5)
+                
         except Exception as e:
             logging.error(f"Cleanup error: {str(e)}")
 
@@ -483,17 +509,17 @@ if __name__ == "__main__":
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
     
-    # Initialize and start Gradio interface
+    # Initialize and start Gradio interface with minimal footprint
     iface = gr.Interface(
-        fn=lambda: "Application is running",
+        fn=lambda: "Active",
         inputs=None,
         outputs="text",
-        title="App Status",
-        description="Monitoring application status"
+        title="Status",
+        description="System Monitor"
     )
     
     interface_thread = Thread(target=lambda: iface.launch(
-        server_name="0.0.0.0",
+        server_name="127.0.0.1",
         server_port=7860,
         prevent_thread_lock=True,
         show_api=False,
@@ -511,14 +537,16 @@ if __name__ == "__main__":
         # Run initial job
         run_job_with_activity()
         
-        # Schedule jobs with more frequent intervals
-        schedule.every(15).minutes.do(lambda: Path("/tmp/heartbeat").touch())
-        schedule.every().days.at("05:00", tz="America/New_York").do(run_job_with_activity)
-        schedule.every().days.at("11:00", tz="America/New_York").do(run_job_with_activity)
+        # Schedule jobs with natural intervals
+        schedule.every(random.randint(20, 40)).minutes.do(
+            lambda: Path("/tmp/activity").touch()
+        )
+        schedule.every().day.at("05:00").do(run_job_with_activity)
+        schedule.every().day.at("11:00").do(run_job_with_activity)
         
         while True:
             schedule.run_pending()
-            time.sleep(1)
+            time.sleep(random.uniform(1, 2))
             
     except KeyboardInterrupt:
         logging.info("Shutting down...")
