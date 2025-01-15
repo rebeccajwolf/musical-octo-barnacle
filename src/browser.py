@@ -452,9 +452,13 @@ class Browser:
         options.add_argument("--disable-domain-reliability")
         options.add_argument("--disable-client-side-phishing-detection")
 
-        # Experimental options
-        options.add_experimental_option("excludeSwitches", ["enable-automation", "enable-logging"])
-        options.add_experimental_option("useAutomationExtension", False)
+        # Set Chrome preferences instead of experimental options
+        prefs = {
+            'enable_automation': False,
+            'credentials_enable_service': False,
+            'profile.password_manager_enabled': False
+        }
+        options.add_experimental_option('prefs', prefs)
 
 
         options.page_load_strategy = "eager"

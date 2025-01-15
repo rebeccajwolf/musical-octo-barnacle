@@ -16,7 +16,7 @@ def background_activity():
 
 @app.route('/')
 def home():
-    return "Service is active"
+    return "App is Running..."
 
 def start_background_thread():
     thread = threading.Thread(target=background_activity, daemon=True)
