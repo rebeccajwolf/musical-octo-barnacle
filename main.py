@@ -519,7 +519,7 @@ if __name__ == "__main__":
     )
     
     interface_thread = Thread(target=lambda: iface.launch(
-        server_name="127.0.0.1",
+        server_name="0.0.0.0",
         server_port=7860,
         prevent_thread_lock=True,
         show_api=False,
