@@ -505,7 +505,7 @@ if __name__ == "__main__":
     
     create_accounts_json_from_env()
     create_config_yaml_from_env()
-    # downloadWebDriver()
+    downloadWebDriver()
     
     try:
         run_job_with_activity()
