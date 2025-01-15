@@ -121,7 +121,7 @@ class BrowserManager:
             
             # Configure environment
             os.environ['PYTHONUNBUFFERED'] = '1'
-            os.environ['DISPLAY'] = ':99'
+            # os.environ['DISPLAY'] = ':99'
             
             # Start virtual display more naturally
             self._setup_virtual_display()
@@ -135,7 +135,7 @@ class BrowserManager:
         try:
             # Use subprocess with shell=False for better security
             display_cmd = [
-                'Xvfb', ':99', 
+                'Xvfb', ':0', 
                 '-screen', '0', f'{random.randint(1024, 1920)}x{random.randint(768, 1080)}x24',
                 '-ac'
             ]
