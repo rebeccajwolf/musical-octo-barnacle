@@ -140,10 +140,21 @@ class Browser:
                     "userAgentMetadata": self.userAgentMetadata,
                 },
             ),
-            # (
-            #     "Page.addScriptToEvaluateOnNewDocument",
-            #     {"source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"},
-            # )
+            (
+                "Page.addScriptToEvaluateOnNewDocument", {
+                    "source": """
+                        Object.defineProperty(navigator, 'webdriver', {
+                            get: () => undefined
+                        });
+                        Object.defineProperty(navigator, 'plugins', {
+                            get: () => [1, 2, 3, 4, 5]
+                        });
+                        window.chrome = {
+                            runtime: {}
+                        };
+                    """
+                }
+            )
         ]
 
         for command, params in cdp_commands:
@@ -191,7 +202,7 @@ class Browser:
         options.add_argument("--ignore-certificate-errors")
         options.add_argument("--ignore-certificate-errors-spki-list")
         options.add_argument("--ignore-ssl-errors")
-        options.add_argument("--headless=new")
+        # options.add_argument("--headless=new")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-extensions")
