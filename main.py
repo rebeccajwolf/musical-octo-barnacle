@@ -11,7 +11,7 @@ import sys
 import traceback
 import subprocess
 import time
-import yaml
+import ruamel.yaml
 import psutil
 import threading
 import numpy as np
@@ -320,12 +320,13 @@ def create_config_yaml_from_env():
             return
         config = {
             'apprise': {
-                'urls': [token]
+                'urls': [ruamel.yaml.scalarstring.DoubleQuotedScalarString(token)]
             }
         }
         config_path = getProjectRoot() / "config-private.yaml"
+        yaml = ruamel.yaml.YAML()
         with open(config_path, 'w', encoding='utf-8') as f:
-            yaml.dump(config, f, default_flow_style=False)
+            yaml.dump(config, f)
             logging.info("[CONFIG] Successfully created config-private.yaml from environment variable")
     except Exception as e:
         logging.error("[CONFIG] Error creating config-private.yaml: %s", str(e))
