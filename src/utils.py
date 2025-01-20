@@ -290,8 +290,11 @@ def sendNotification(title: str, body: str, e: Exception = None) -> None:
         ):
             return
 
+        # Reload private config to ensure we have the latest configuration
+        private_config = loadPrivateConfig()
+        
         apprise = Apprise()
-        urls: list[str] = PRIVATE_CONFIG.get("apprise", {}).get("urls", [])
+        urls: list[str] = private_config.get("apprise", {}).get("urls", [])
         
         if not urls:
             logging.warning("No notification URLs configured in config-private.yaml")
