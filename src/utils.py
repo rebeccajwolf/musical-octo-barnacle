@@ -314,8 +314,8 @@ def sendNotification(title: str, body: str, e: Exception = None) -> None:
             try:
                 notification_result = apprise.notify(
                     title=str(title),
-                    body=str(body),
-                    body_format=apprise.NotifyFormat.TEXT
+                    body=str(body)
+
                 )
 
                 if notification_result:
