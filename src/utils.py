@@ -278,22 +278,61 @@ def loadPrivateConfig() -> MappingProxyType:
 
 
 def sendNotification(title: str, body: str, e: Exception = None) -> None:
-    if Utils.args.disable_apprise or (
-        e
-        and not CONFIG.get("apprise")
-        .get("notify")
-        .get("uncaught-exception")
-        .get("enabled")
-    ):
-        return
-    apprise = Apprise()
-    urls: list[str] = PRIVATE_CONFIG.get("apprise").get("urls")
-    if not urls:
-        logging.debug("No urls found, not sending notification")
-        return
-    for url in urls:
-        apprise.add(url)
-    assert apprise.notify(title=str(title), body=str(body)) # not work for telegram
+    """Send notification with proper error handling and logging"""
+    try:
+        # Check if notifications are disabled
+        if Utils.args.disable_apprise or (
+            e
+            and not CONFIG.get("apprise")
+            .get("notify")
+            .get("uncaught-exception")
+            .get("enabled")
+        ):
+            return
+
+        apprise = Apprise()
+        urls: list[str] = PRIVATE_CONFIG.get("apprise").get("urls")
+        
+        if not urls:
+            logging.warning("No notification URLs configured in config-private.yaml")
+            return
+
+        # Add all configured notification URLs
+        for url in urls:
+            try:
+                apprise.add(url)
+
+            except Exception as add_error:
+                logging.error(f"Failed to add notification URL: {str(add_error)}")
+                continue
+
+        # Attempt to send notification with retries
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                notification_result = apprise.notify(
+                    title=str(title),
+                    body=str(body),
+                    body_format=apprise.NotifyFormat.TEXT
+                )
+
+                if notification_result:
+                    logging.info("Notification sent successfully")
+                    return
+                else:
+                    logging.error(f"Failed to send notification - attempt {attempt + 1}/{max_retries}")
+                    time.sleep(2 ** attempt)  # Exponential backoff
+            except Exception as notify_error:
+                logging.error(f"Error sending notification (attempt {attempt + 1}/{max_retries}): {str(notify_error)}")
+                if attempt < max_retries - 1:
+                    time.sleep(2 ** attempt)
+                    continue
+                raise
+
+        logging.error("All notification attempts failed")
+
+    except Exception as e:
+        logging.error(f"Fatal error in sendNotification: {str(e)}")
 
 
 def getAnswerCode(key: str, string: str) -> str:
