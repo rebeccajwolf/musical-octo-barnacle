@@ -42,7 +42,7 @@ from src import (
 from src.activities import Activities
 from src.browser import RemainingSearches
 from src.loggingColoredFormatter import ColoredFormatter
-from src.utils import Utils, CONFIG, sendNotification, getProjectRoot, formatNumber
+from src.utils import Utils, CONFIG, sendNotification, getProjectRoot, formatNumber, loadPrivateConfig
 
 
 def executeBot(currentAccount: Account, args: argparse.Namespace) -> int:
@@ -269,23 +269,40 @@ def main():
     previous_points_data = load_previous_points_data()
 
     for currentAccount in loadedAccounts:
-        try:
-            earned_points = executeBot(currentAccount, args)
-        except Exception as e1:
-            logging.error("", exc_info=True)
-            sendNotification(
-                f"⚠️ Error executing {currentAccount.username}, please check the log",
-                traceback.format_exc(),
-                e1,
-            )
-            continue
-        previous_points = previous_points_data.get(currentAccount.username, 0)
-        points_difference = earned_points - previous_points
-        log_daily_points_to_csv(earned_points, points_difference)
-        previous_points_data[currentAccount.username] = earned_points
-        logging.info(
-            f"[POINTS] Data for '{currentAccount.username}' appended to the file."
-        )
+        max_retries = 3
+        retry_count = 0
+        while retry_count < max_retries:
+            try:
+                earned_points = executeBot(currentAccount, args)
+                # If execution succeeds, process the points and break the retry loop
+                previous_points = previous_points_data.get(currentAccount.username, 0)
+                points_difference = earned_points - previous_points
+                log_daily_points_to_csv(earned_points, points_difference)
+                previous_points_data[currentAccount.username] = earned_points
+                logging.info(
+                    f"[POINTS] Data for '{currentAccount.username}' appended to the file."
+                )
+                break  # Success - exit retry loop
+                
+            except Exception as e:
+                retry_count += 1
+                if retry_count < max_retries:
+                    logging.error(
+                        f"Error executing account {currentAccount.username} (attempt {retry_count}/{max_retries}): {str(e)}"
+                    )
+                    # Add exponential backoff
+                    wait_time = 2 ** retry_count
+                    logging.info(f"Waiting {wait_time} seconds before retry...")
+                    time.sleep(wait_time)
+                else:
+                    logging.error(
+                        f"Failed to execute account {currentAccount.username} after {max_retries} attempts. Moving to next account."
+                    )
+                    sendNotification(
+                        f"⚠️ Error executing {currentAccount.username} after {max_retries} retries",
+                        traceback.format_exc(),
+                        e,
+                    )
 
     save_previous_points_data(previous_points_data)
     logging.info("[POINTS] Data saved for the next day.")
@@ -318,18 +335,40 @@ def create_config_yaml_from_env():
         if not token:
             logging.warning("[CONFIG] No TOKEN environment variable found")
             return
+
+        # Validate token format
+        if not token.startswith(('tgram://', 'discord://', 'slack://')):
+            logging.error("[CONFIG] Invalid token format. Must start with protocol (e.g., tgram://, discord://, slack://)")
+            return
+
+        # Create minimal config with just the token
         config = {
             'apprise': {
-                'urls': [ruamel.yaml.scalarstring.DoubleQuotedScalarString(token)]
+                'urls': [token]
             }
         }
+
         config_path = getProjectRoot() / "config-private.yaml"
+        
+        # Use ruamel.yaml with proper configuration
         yaml = ruamel.yaml.YAML()
+        yaml.default_flow_style = False
+        yaml.indent(mapping=2, sequence=4, offset=2)
+        
         with open(config_path, 'w', encoding='utf-8') as f:
             yaml.dump(config, f)
             logging.info("[CONFIG] Successfully created config-private.yaml from environment variable")
+            
+        # Validate the created config
+        test_config = loadPrivateConfig()
+        if not test_config.get('apprise', {}).get('urls', []):
+            raise ValueError("Created config file is invalid - missing apprise URLs")
+            
+        logging.info("[CONFIG] Configuration file validated successfully")
+        
     except Exception as e:
-        logging.error("[CONFIG] Error creating config-private.yaml: %s", str(e))
+        logging.error(f"[CONFIG] Error creating config-private.yaml: {str(e)}")
+        raise
 
 def downloadWebDriver():
     """Downloads and sets up chromedriver in the correct location"""

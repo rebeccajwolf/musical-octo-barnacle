@@ -291,7 +291,7 @@ def sendNotification(title: str, body: str, e: Exception = None) -> None:
             return
 
         apprise = Apprise()
-        urls: list[str] = PRIVATE_CONFIG.get("apprise").get("urls")
+        urls: list[str] = PRIVATE_CONFIG.get("apprise", {}).get("urls", [])
         
         if not urls:
             logging.warning("No notification URLs configured in config-private.yaml")
@@ -301,7 +301,6 @@ def sendNotification(title: str, body: str, e: Exception = None) -> None:
         for url in urls:
             try:
                 apprise.add(url)
-
             except Exception as add_error:
                 logging.error(f"Failed to add notification URL: {str(add_error)}")
                 continue
@@ -321,7 +320,8 @@ def sendNotification(title: str, body: str, e: Exception = None) -> None:
                     return
                 else:
                     logging.error(f"Failed to send notification - attempt {attempt + 1}/{max_retries}")
-                    time.sleep(2 ** attempt)  # Exponential backoff
+                    if attempt < max_retries - 1:
+                        time.sleep(2 ** attempt)  # Exponential backoff
             except Exception as notify_error:
                 logging.error(f"Error sending notification (attempt {attempt + 1}/{max_retries}): {str(notify_error)}")
                 if attempt < max_retries - 1:
