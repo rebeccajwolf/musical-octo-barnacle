@@ -56,10 +56,32 @@ class Browser:
         if newBrowserConfig:
             self.browserConfig = newBrowserConfig
             saveBrowserConfig(self.userDataDir, self.browserConfig)
-        self.webdriver = self.browserSetup()
-        self._setup_cdp_listeners()
-        self.utils = Utils(self.webdriver)
+        self.webdriver = None
+        self.utils = None
+        self.setup_browser()
         logging.debug("out __init__")
+
+    def setup_browser(self):
+        """Setup browser instance with proper error handling"""
+        try:
+            self.webdriver = self.browserSetup()
+            self._setup_cdp_listeners()
+            self.utils = Utils(self.webdriver)
+        except Exception as e:
+            logging.error(f"Error setting up browser: {str(e)}")
+            self.cleanup()
+            raise
+
+    def cleanup(self):
+        """Clean up browser resources"""
+        if self.webdriver:
+            try:
+                self.webdriver.quit()
+            except Exception as e:
+                logging.error(f"Error during browser quit: {str(e)}")
+            finally:
+                self.webdriver = None
+                self.utils = None
 
     def __enter__(self):
         logging.debug("in __enter__")
@@ -75,9 +97,7 @@ class Browser:
         logging.debug(
             f"in __exit__ exc_type={exc_type} exc_value={exc_value} traceback={traceback}"
         )
-        # turns out close is needed for undetected_chromedriver
-        self.webdriver.close()
-        self.webdriver.quit()
+        self.cleanup()
 
     def _apply_cdp_settings(self, target_id=None):
         """Apply CDP settings to a specific target or current tab"""
