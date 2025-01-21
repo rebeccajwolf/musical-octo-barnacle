@@ -289,7 +289,7 @@ def main():
     previous_points_data = load_previous_points_data()
 
     for currentAccount in loadedAccounts:
-        max_retries = 3
+        max_retries = 7
         retry_count = 0
         while retry_count < max_retries:
             try:
@@ -495,7 +495,7 @@ def setup_schedule():
 
     # Add some randomization to job times to avoid detection
     base_morning_hour = 5
-    base_evening_hour = 14
+    base_evening_hour = 19
     
     # Add random minutes to base hours
     morning_time = f"{base_morning_hour:02d}:{random.randint(0, 59):02d}"
