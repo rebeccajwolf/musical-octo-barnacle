@@ -76,6 +76,7 @@ class Browser:
         """Clean up browser resources"""
         if self.webdriver:
             try:
+                self.webdriver.close()
                 self.webdriver.quit()
             except Exception as e:
                 logging.error(f"Error during browser quit: {str(e)}")

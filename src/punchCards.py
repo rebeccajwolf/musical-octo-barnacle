@@ -17,42 +17,58 @@ class PunchCards:
     def completePunchCard(self, url: str, childPromotions: dict):
         # Function to complete a specific punch card
         self.webdriver.get(url)
-        for child in childPromotions:
-            if not child["complete"]:
-                logging.info(f"Punch Card Name: {child['name']}")
-                if child["promotionType"] == "urlreward":
-                    logging.info(f"Offer Title: {child['attributes']['title']}")
-                    self.webdriver.find_element(
-                        By.XPATH, "//a[@class='offer-cta']/div"
-                    ).click()
-                    self.browser.utils.switchToNewTab(True)
-                    time.sleep(10)
-                if child["promotionType"] == "quiz":
-                    self.webdriver.find_element(
-                        By.XPATH, "//a[@class='offer-cta']/div"
-                    ).click()
-                    self.browser.utils.switchToNewTab()
-                    counter = str(
-                        self.webdriver.find_element(
-                            By.XPATH, '//*[@id="QuestionPane0"]/div[2]'
-                        ).get_attribute("innerHTML")
-                    )[:-1][1:]
-                    numberOfQuestions = max(
-                        int(s) for s in counter.split() if s.isdigit()
-                    )
-                    for question in range(numberOfQuestions):
-                        # Answer random quiz questions
-                        self.webdriver.find_element(
-                            By.XPATH,
-                            f'//*[@id="QuestionPane{question}"]/div[1]/div[2]/a[{random.randint(1, 3)}]/div',
-                        ).click()
-                        time.sleep(random.randint(100, 700) / 100)
-                        self.webdriver.find_element(
-                            By.XPATH,
-                            f'//*[@id="AnswerPane{question}"]/div[1]/div[2]/div[4]/a/div/span/input',
-                        ).click()
-                        time.sleep(random.randint(100, 700) / 100)
-                    time.sleep(random.randint(100, 700) / 100)
+        time.sleep(7)
+        # while True:
+        #     try:
+        #         self.browser.waitUntilClickable(By.XPATH, '//a[@class= "offer-cta"]/child::div[contains(@class, "btn-primary")]', 15)
+        #         incomplete_offers_titles = self.browser.utils.get_elements_text(By.XPATH, '//a[@class= "offer-cta"]/child::div[contains(@class, "btn-primary")]/span[1]')
+        #         logging.info(f"Punch Card Incomplete Titles: {incomplete_offers_titles}")
+        #         break
+        #     except:
+        #         self.webdriver.refresh()
+        #         time.sleep(10)
+        #         self.waitUntilVisible(By.ID, 'rewards-dashboard-punchcard-details', 30)
+        incomplete_offers = self.webdriver.find_elements(By.XPATH, '//a[@class= "offer-cta"]/child::div[contains(@class, "btn-primary")]')
+        for _ in range(len(incomplete_offers)):
+            self.browser.waitUntilClickable(By.XPATH, '//a[@class= "offer-cta"]/child::div[contains(@class, "btn-primary")]', 15)
+            self.webdriver.find_element(By.XPATH, '//a[@class= "offer-cta"]/child::div[contains(@class, "btn-primary")]').click()
+            time.sleep(3)
+            self.browser.switchToNewTab()
+            time.sleep(2)
+            self.doPunchCard()
+            time.sleep(2)
+            if self.webdriver.current_url == url:
+                self.webdriver.refresh()
+                self.waitUntilVisible(By.ID, 'rewards-dashboard-punchcard-details', 30)
+            time.sleep(random.randint(100, 700) / 100)
+
+    def doPunchCard(self):
+        if self.browser.utils.isElementExists(By.ID, 'rqStartQuiz'):
+            counter = str(
+                self.webdriver.find_element(
+                    By.XPATH, '//*[@id="QuestionPane0"]/div[2]'
+                ).get_attribute("innerHTML")
+            )[:-1][1:]
+            numberOfQuestions = max(
+                int(s) for s in counter.split() if s.isdigit()
+            )
+            for question in range(numberOfQuestions):
+                # Answer random quiz questions
+                self.webdriver.find_element(
+                    By.XPATH,
+                    f'//*[@id="QuestionPane{question}"]/div[1]/div[2]/a[{random.randint(1, 3)}]/div',
+                ).click()
+                time.sleep(random.randint(100, 700) / 100)
+                self.webdriver.find_element(
+                    By.XPATH,
+                    f'//*[@id="AnswerPane{question}"]/div[1]/div[2]/div[4]/a/div/span/input',
+                ).click()
+                time.sleep(random.randint(100, 700) / 100)
+        else:
+            time.sleep(5)
+            self.browser.closeCurrentTab()
+            time.sleep(5)
+
 
     def completePunchCards(self):
         # Function to complete all punch cards

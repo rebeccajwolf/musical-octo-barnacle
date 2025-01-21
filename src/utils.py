@@ -129,6 +129,14 @@ class Utils:
     def waitUntilQuizLoads(self) -> WebElement:
         return self.waitUntilVisible(By.XPATH, '//*[@id="rqStartQuiz"]')
 
+    def isElementExists(self, by: str, selector: str) -> bool:
+        '''Returns True if given element exits else False'''
+        try:
+            self.webdriver.find_element(by, selector)
+        except NoSuchElementException:
+            return False
+        return True
+
     def resetTabs(self) -> None:
         curr = self.webdriver.current_window_handle
 
@@ -276,6 +284,41 @@ class Utils:
                 expected_conditions.element_to_be_clickable(element)
             )
             element.click()
+
+
+    def get_elements_text(self, by: str, selector: str, timeToWait: int = 15, uppercase: bool = False) -> list[str]:
+        """
+        Extract text from elements.
+        
+        Args:
+            driver: Selenium WebDriver instance
+            by: Type of selector (e.g., "xpath", "css selector", "id", etc.)
+            selector: The selector string to find elements
+            timeToWait: Maximum time to wait for elements in seconds
+            uppercase: Convert extracted text to uppercase if True
+            
+        Returns:
+            List of extracted text values
+        """
+        texts = []
+
+        # Wait for at least one element to be present
+        WebDriverWait(self.webdriver, timeToWait).until(
+            expected_conditions.presence_of_element_located((by, selector))
+        )
+        
+        # Find all matching elements
+        elements = self.webdriver.find_elements(by, selector)
+        
+        # Extract text from each element
+        for element in elements:
+            text = element.text or element.get_attribute('innerText')
+            if text:
+                # Convert to uppercase if requested
+                text = text.upper() if uppercase else text
+                texts.append(text.strip())
+            
+        return texts
 
 
 def getProjectRoot() -> Path:
