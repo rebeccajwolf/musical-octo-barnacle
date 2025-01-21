@@ -26,6 +26,7 @@ class PunchCards:
                         By.XPATH, "//a[@class='offer-cta']/div"
                     ).click()
                     self.browser.utils.switchToNewTab(True)
+                    time.sleep(10)
                 if child["promotionType"] == "quiz":
                     self.webdriver.find_element(
                         By.XPATH, "//a[@class='offer-cta']/div"
