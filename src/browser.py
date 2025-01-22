@@ -5,6 +5,7 @@ import logging
 import os
 import random
 import time
+import shutil
 import json
 from pathlib import Path
 from types import TracebackType
@@ -579,7 +580,6 @@ class Browser:
         try:
             for oldDir in sessionsDir.glob(f"{self.username}_*"):
                 if oldDir != userSessionDir:
-                    import shutil
                     shutil.rmtree(oldDir)
         except Exception as e:
             logging.error(f"Error cleaning old session directories: {str(e)}")

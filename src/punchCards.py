@@ -30,16 +30,16 @@ class PunchCards:
         #         self.waitUntilVisible(By.ID, 'rewards-dashboard-punchcard-details', 30)
         incomplete_offers = self.webdriver.find_elements(By.XPATH, '//a[@class= "offer-cta"]/child::div[contains(@class, "btn-primary")]')
         for _ in range(len(incomplete_offers)):
-            self.browser.waitUntilClickable(By.XPATH, '//a[@class= "offer-cta"]/child::div[contains(@class, "btn-primary")]', 15)
+            self.browser.utils.waitUntilClickable(By.XPATH, '//a[@class= "offer-cta"]/child::div[contains(@class, "btn-primary")]', 15)
             self.webdriver.find_element(By.XPATH, '//a[@class= "offer-cta"]/child::div[contains(@class, "btn-primary")]').click()
             time.sleep(3)
-            self.browser.switchToNewTab()
+            self.browser.utils.switchToNewTab()
             time.sleep(2)
             self.doPunchCard()
             time.sleep(2)
             if self.webdriver.current_url == url:
                 self.webdriver.refresh()
-                self.waitUntilVisible(By.ID, 'rewards-dashboard-punchcard-details', 30)
+                self.browser.utils.waitUntilVisible(By.ID, 'rewards-dashboard-punchcard-details', 30)
             time.sleep(random.randint(100, 700) / 100)
 
     def doPunchCard(self):
@@ -66,7 +66,7 @@ class PunchCards:
                 time.sleep(random.randint(100, 700) / 100)
         else:
             time.sleep(5)
-            self.browser.closeCurrentTab()
+            self.browser.utils.closeCurrentTab()
             time.sleep(5)
 
 
