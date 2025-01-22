@@ -293,7 +293,7 @@ def main():
     previous_points_data = load_previous_points_data()
 
     for currentAccount in loadedAccounts:
-        max_retries = 7
+        max_retries = 17
         retry_count = 0
         while retry_count < max_retries:
             try:
