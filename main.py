@@ -83,6 +83,9 @@ def executeBot(currentAccount: Account, args: argparse.Namespace) -> int:
                 accountPoints = utils.getAccountPoints()
 
         if args.searchtype in ("mobile", None):
+            # Ensure previous browser is fully cleaned up
+            time.sleep(2)  # Small delay between browser instances
+            
             mobile_browser = Browser(mobile=True, account=currentAccount, args=args)
             browser_instances.append(mobile_browser)
             with mobile_browser as mobileBrowser:
@@ -151,6 +154,7 @@ def executeBot(currentAccount: Account, args: argparse.Namespace) -> int:
         for browser in browser_instances:
             try:
                 browser.cleanup()
+                time.sleep(1)  # Small delay between cleanup operations
             except Exception as cleanup_error:
                 logging.error(f"Error during browser cleanup: {str(cleanup_error)}")
 

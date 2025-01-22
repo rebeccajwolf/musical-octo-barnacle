@@ -73,14 +73,34 @@ class Browser:
             raise
 
     def cleanup(self):
-        """Clean up browser resources"""
+        """Clean up browser resources with proper process termination"""
         if self.webdriver:
             try:
+                # Store current window handle
+                current_handle = self.webdriver.current_window_handle
+                
+                # Close any extra tabs/windows except main
+                all_handles = self.webdriver.window_handles
+                for handle in all_handles:
+                    if handle != current_handle:
+                        self.webdriver.switch_to.window(handle)
+                        self.webdriver.close()
+                
+                # Switch back to main window and close it
+                self.webdriver.switch_to.window(current_handle)
                 self.webdriver.close()
-                self.webdriver.quit()
+                
             except Exception as e:
-                logging.error(f"Error during browser quit: {str(e)}")
+                logging.error(f"Error during browser cleanup: {str(e)}")
             finally:
+                try:
+                    # Ensure webdriver is fully quit
+                    self.webdriver.quit()
+                    
+                    # Small delay to ensure processes are terminated
+                    time.sleep(1)
+                except Exception as e:
+                    logging.error(f"Error during browser quit: {str(e)}")
                 self.webdriver = None
                 self.utils = None
 
@@ -547,12 +567,23 @@ class Browser:
         """
         sessionsDir = getProjectRoot() / "sessions"
 
-        # Concatenate username and browser type for a plain text session ID
-        sessionid = f"{self.username}"
+        # Create unique session ID using username and timestamp
+        sessionid = f"{self.username}_{int(time.time())}"
 
-        sessionsDir = sessionsDir / sessionid
-        sessionsDir.mkdir(parents=True, exist_ok=True)
-        return sessionsDir
+        # Create new session directory
+        userSessionDir = sessionsDir / sessionid
+        userSessionDir.mkdir(parents=True, exist_ok=True)
+        
+        # Clean up old session directories for this user
+        try:
+            for oldDir in sessionsDir.glob(f"{self.username}_*"):
+                if oldDir != userSessionDir:
+                    import shutil
+                    shutil.rmtree(oldDir)
+        except Exception as e:
+            logging.error(f"Error cleaning old session directories: {str(e)}")
+
+        return userSessionDir
 
     @staticmethod
     def getLanguageCountry(language: str, country: str) -> tuple[str, str]:
