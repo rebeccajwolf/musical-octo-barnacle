@@ -43,6 +43,7 @@ from src.activities import Activities
 from src.browser import RemainingSearches
 from src.loggingColoredFormatter import ColoredFormatter
 from src.utils import Utils, CONFIG, sendNotification, getProjectRoot, formatNumber, loadPrivateConfig
+from src.exceptions import *
 
 
 def executeBot(currentAccount: Account, args: argparse.Namespace) -> int:
@@ -143,7 +144,30 @@ def executeBot(currentAccount: Account, args: argparse.Namespace) -> int:
                     )
 
         return accountPoints
-
+    except AccountLockedException:
+        sendNotification(
+            "Account Update",
+            "\n".join(
+                [
+                    f"👤 Account: {currentAccount.username}",
+                    f"Your account has been locked !",
+                    f"⚠️ Locked",
+                ]
+            ),
+        )
+        raise
+    except AccountSuspendedException:
+        sendNotification(
+            "Account Update",
+            "\n".join(
+                [
+                    f"👤 Account: {currentAccount.username}",
+                    f"Your account has been suspended !",
+                    f"❌ Suspended",
+                ]
+            ),
+        )
+        raise
     except Exception as e:
         # Log the exception
         logging.error(f"Error during execution: {str(e)}")
@@ -307,7 +331,10 @@ def main():
                     f"[POINTS] Data for '{currentAccount.username}' appended to the file."
                 )
                 break  # Success - exit retry loop
-                
+            except AccountLockedException:
+                break
+            except AccountSuspendedException:
+                break
             except Exception as e:
                 retry_count += 1
                 if retry_count < max_retries:
