@@ -69,8 +69,8 @@ def executeBot(currentAccount: Account, args: argparse.Namespace) -> int:
                 logging.info(
                     f"[POINTS] You have {formatNumber(startingPoints)} points on your account"
                 )
-                Activities(desktopBrowser).completeActivities()
-                PunchCards(desktopBrowser).completePunchCards()
+                # Activities(desktopBrowser).completeActivities()
+                # PunchCards(desktopBrowser).completePunchCards()
 
                 with Searches(desktopBrowser) as searches:
                     searches.bingSearches()

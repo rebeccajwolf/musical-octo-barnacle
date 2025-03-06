@@ -328,7 +328,7 @@ class Activities:
         finally:
             # Stop background activity
             # self._stop_background_activity()
-            time.sleep(random.randint(172, 300))
+            time.sleep(random.randint(300, 600))
             self.browser.utils.resetTabs()
 
     def _process_activity(self, activityTitle: str, activity: dict):
